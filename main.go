@@ -76,16 +76,12 @@ func main() {
 	)
 
 	l := NewLogger( LPFX_CORE )
-//	l.PutOK("Test message!")
-//	l.PutNon("Test message!")
-//	l.PutInf("Test message!")
-//	l.PutWrn("Test message!")
-//	l.PutErr("Test message!")
+	l.PutOK("Core log system has been inited!")
 
-
-	l.PutInf("Creating new app ...")
+//	l.PutInf("Creating new app ...")
 	app, e := NewApp( appNetProto, appNetPath ); if e != nil {
-		l.PutErr("Could not create App: " + e.Error()); return
+		l.PutNon("Could not create App!")
+		l.PutErr(e.Error()); return
 	} else { l.PutOK("App has been created!") }
 	defer func() {
 		app.Wait()
@@ -93,7 +89,7 @@ func main() {
 		l.PutOK("App has been destroyed!")
 	}()
 
-	l.PutInf("Kernel signal catcher initialisation ...")
+//	l.PutInf("Kernel signal catcher initialisation ...")
 	var sgn = make( chan os.Signal )
 	signal.Notify( sgn, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT )
 	l.PutOK("Kernel signal catcher has been initialised!")
@@ -115,6 +111,7 @@ func main() {
 				l.PutInf("Trying to restart HTTPServing ...")
 				continue;
 			}
+			l.PutOK("HTTP serving has been stoped!")
 			break;
 		}
 
