@@ -12,6 +12,7 @@ import (
 const (
 	LPFX_CORE = iota
 	LPFX_HTTPD
+	LPFX_WEBROOT
 )
 const (
 	LLEV_OK = iota
@@ -46,6 +47,8 @@ func ( l *Logger ) GetPrefix() string {
 		return "\x1b[36;1m[CORE]:\x1b[0m"
 	case LPFX_HTTPD:
 		return "\x1b[36;1m[HTTPD]:\x1b[0m"
+	case LPFX_WEBROOT:
+		return "\x1b[36;1m[HTTPD-WEBROOT]:\x1b[0m"
 	default:
 		return ""
 	}

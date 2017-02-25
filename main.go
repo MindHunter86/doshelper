@@ -95,7 +95,7 @@ func main() {
 	l.PutOK("Kernel signal catcher has been initialised!")
 
 
-	l.PutInf("Starting HTTP goroutine ...")
+//	l.PutInf("Starting HTTP goroutine ...")
 	go func( a *App ) {
 		a.Add(1)
 		l := NewLogger( LPFX_HTTPD )
@@ -131,15 +131,15 @@ func main() {
 
 type HTTPRouter struct {
 	Router *mux.Router
-	l *Logger
+	wroot_l *Logger
 }
 func NewHTTPRouter( l *Logger ) *HTTPRouter {
 	return &HTTPRouter{
 		Router: mux.NewRouter(),
-		l: l,
+		wroot_l: NewLogger( LPFX_WEBROOT ),
 	}
 }
 func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
-	hr.l.PutOK("WebRoot: Request received !")
+	hr.wroot_l.PutInf("New connection!")
 	return
 }
