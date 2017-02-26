@@ -114,6 +114,7 @@ func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
 	} else { hr.wroot_l.PutInf( "User: " + u.Uuid ) }
 
 	c, e := u.GenSecureHash(); if e != nil {
+	// Working with SESSION cookie LIFETIME ????
 		hr.wroot_l.PutNon( "Could not set User's SL cookie for " + u.Uuid )
 		w.Write( []byte("Sorry, but you are bot =(") )	// If SL cookie is set - you are bot. NoNOK!
 		w.WriteHeader(http.StatusTeapot)
