@@ -107,11 +107,9 @@ func NewHTTPRouter( l *Logger ) *HTTPRouter {
 	}
 }
 func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
-	hr.wroot_l.PutInf("New connection!")
-
 	u := NewUser(r)
 	if u_c := u.ParseOrCreateUUID(); u_c != nil {
-		hr.wroot_l.PutInf( "New user: " + u.Uuid )
+//		hr.wroot_l.PutInf( "New user: " + u.Uuid )
 		http.SetCookie( w, u_c )
 	} else { hr.wroot_l.PutInf( "User: " + u.Uuid ) }
 

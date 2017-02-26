@@ -25,6 +25,7 @@ func NewSockListener( proto, path string ) ( *SockListener, error ) {
 	}, nil
 }
 func ( sl *SockListener ) HTTPServe( r *mux.Router ) error {
+// DATA RACE 
 	if sl.alive == false { return errors.New("Listener is dead!") }
 
 	if e := http.Serve( sl.Listener, r ); e != nil {
@@ -42,6 +43,7 @@ func ( sl *SockListener ) File() ( *os.File, error ) {
 }
 func ( sl *SockListener ) Close() error {
 	if sl.alive == false { return errors.New("Listener is dead!") }
+// DATA RACE
 	sl.alive = false
 	return sl.Listener.Close()
 }
