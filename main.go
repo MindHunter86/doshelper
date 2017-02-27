@@ -12,8 +12,14 @@ import (
 import "github.com/gorilla/mux"
 
 
+//const (
+//	ERR_
+//)
+
+
 type App struct {
 	sync.WaitGroup
+	Users *UserBuf
 	Socket *SockListener
 }
 
@@ -28,17 +34,39 @@ func NewApp( netproto, netpath string ) ( *App, error ) {
 func ( a *App ) Destroy() {
 	a.Socket.Close()
 }
+func ( a *App ) ThreadHTTPD() {
+	a.Add(1)
+	l := NewLogger( LPFX_HTTPD )
+	l.PutOK("HTTPD goroutine has been inited!")
+
+	r := NewHTTPRouter(l)
+	r.Router.HandleFunc( "/", r.WebRoot )
+
+	l.PutInf("Starting HTTP serving ...")
+	for i := uint8(0); i < uint8(4); i++ {
+		if e := a.Socket.HTTPServe( r.Router ); e != nil {
+			l.PutWrn("Pre-fail state! HTTPServe error: " + e.Error())
+			l.PutInf("Trying to restart HTTPServing ...")
+			continue;
+		}
+		l.PutOK("HTTP serving has been stopped!")
+		break;
+	}
+
+	l.PutOK("HTTPD goroutine has been destroyed!")
+	a.Done()
+}
+
 
 func main() {
 	const (
 		appNetProto string = "unix"
-		appNetPath string = "./dostest.sock"
+		appNetPath string = "/run/doshelpv2.sock"
 	)
 
 	l := NewLogger( LPFX_CORE )
 	l.PutOK("Core log system has been inited!")
 
-//	l.PutInf("Creating new app ...")
 	app, e := NewApp( appNetProto, appNetPath ); if e != nil {
 		l.PutNon("Could not create App!")
 		l.PutErr(e.Error()); return
@@ -49,35 +77,11 @@ func main() {
 		l.PutOK("App has been destroyed!")
 	}()
 
-//	l.PutInf("Kernel signal catcher initialisation ...")
 	var sgn = make( chan os.Signal )
 	signal.Notify( sgn, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT )
 	l.PutOK("Kernel signal catcher has been initialised!")
 
-
-//	l.PutInf("Starting HTTP goroutine ...")
-	go func( a *App ) {
-		a.Add(1)
-		l := NewLogger( LPFX_HTTPD )
-		l.PutOK("HTTPD goroutine has been inited!")
-
-		r := NewHTTPRouter(l)
-		r.Router.HandleFunc( "/", r.WebRoot )
-
-		l.PutInf("Starting HTTP serving ...")
-		for i := uint8(0); i < uint8(4); i++ {
-			if e := a.Socket.HTTPServe( r.Router ); e != nil {
-				l.PutWrn("Pre-fail state! HTTPServe error: " + e.Error())
-				l.PutInf("Trying to restart HTTPServing ...")
-				continue;
-			}
-			l.PutOK("HTTP serving has been stopped!")
-			break;
-		}
-
-		l.PutOK("HTTPD goroutine has been destroyed!")
-		a.Done()
-	}( app )
+	go app.ThreadHTTPD()
 
 	for {
 		select {
@@ -88,6 +92,8 @@ func main() {
 		}
 	}
 }
+
+
 
 type HTTPRouter struct {
 	Router *mux.Router
@@ -100,16 +106,24 @@ func NewHTTPRouter( l *Logger ) *HTTPRouter {
 	}
 }
 func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
+
 	u := NewUser(r)
 	if u_c := u.ParseOrCreateUUID(); u_c != nil {
 		hr.wroot_l.PutInf( "New user: " + u.Uuid )
 		http.SetCookie( w, u_c )
 	} else { hr.wroot_l.PutInf( "User: " + u.Uuid ) }
 
+// 	if hwid_c, e := u.GenHWID(); e != nil {
+// 		ht.wroot_l.PutNon( "Colud not set User's HWID cookie for " + u.Uuid )
+// 		w.Write( []byte("Sorry, but you're a bot =(") )
+// 		w.WriteHeader(http.StatusTeapot)
+// 		return
+// 	}
+
 	c, e := u.GenSecureHash(); if e != nil {
 	// Working with SESSION cookie LIFETIME ????
 		hr.wroot_l.PutNon( "Could not set User's SL cookie for " + u.Uuid )
-		w.Write( []byte("Sorry, but you are bot =(") )	// If SL cookie is set - you are bot. NoNOK!
+		w.Write( []byte("Sorry, but you are a bot =(") )	// If SL cookie is set - you are bot. NoNOK!
 		w.WriteHeader(http.StatusTeapot)
 		return
 	}
