@@ -51,16 +51,17 @@ func NewUser( r *http.Request ) *User {
 	u := &User{ req: r }
 	return u
 }
-//	return bool - false: created New user or true: not
-func GetOrCreateUser( r *http.Request, ub *UserBuf ) ( *User, bool ) {
-	if hwid_c, e := r.Cookie("hwid"); e != nil {
-		return &User{ req: r }, false
-	} else {
-		if u, ok := ub.UserGet( hwid_c.Value ); ok == false {
-			return &User{ req: r }, false
-		} else { return u, ok }
+func getOrCreateUser( r *http.Request, ub *UserBuf ) ( *User, bool ) {
+	hwid_c, e := r.Cookie("hwid")
+	switch e {
+	case nil:
+		break;
+	default:
+		if u, ok := ub.UserGet( hwid_c.Value ); ok { return u, ok }
 	}
+	return &User{ req: r }, false
 }
+//	return bool - false: created New user or true: not
 func ( u *User ) SaveInCache( ub *UserBuf, hwid string ) {
 	ub.UserPut( hwid, *u )
 }
