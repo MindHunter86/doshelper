@@ -3,6 +3,8 @@ package main
 import (
 	"sync"
 
+	"database/sql"
+
 	"net/http"
 
 	"os"
@@ -10,11 +12,27 @@ import (
 	"syscall"
 )
 import "github.com/gorilla/mux"
-
+import _ "github.com/go-sql-driver/mysql"
 
 //const (
 //	ERR_
 //)
+
+
+
+
+
+
+
+///		WARNING!!!!
+// APP DOES NOT SUPPORT URL REWRITE!!!!
+///		WARNING!!!!
+
+// Change mux? https://godoc.org/github.com/husobee/vestigo#CustomNotFoundHandlerFunc
+
+
+
+
 
 
 type App struct {
@@ -62,6 +80,10 @@ func main() {
 	const (
 		appNetProto string = "unix"
 		appNetPath string = "/run/doshelpv2.sock"
+		appSqlHost string = "lambda.mh00.net:23306"
+		appSqlUser string = "doshelper"
+		appSqlPass string = "pyIF236NBfZLXUu1"
+		appSqlDb string = "doshelpv2"
 	)
 
 	l := NewLogger( LPFX_CORE )
@@ -93,6 +115,21 @@ func main() {
 	}
 }
 
+
+type sqlClient struct {
+	dbconn *sql.DB
+}
+// host port user pass db string
+func newSqlClient( h,u,p,d string ) ( *sqlClient, error ) {
+	db, e := sql.Open( "mysql", u + ":" + p + "@" + h + "/" + d ); if e != nil { return nil,e }
+	if e := db.Ping(); e != nil { return nil,e }
+	return &sqlClient{
+		dbconn: db,
+	}, nil
+}
+func ( sc *sqlClient ) connCheck() error {
+	return sc.dbconn.Ping()
+}
 
 
 type HTTPRouter struct {
