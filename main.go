@@ -33,7 +33,7 @@ import _ "github.com/go-sql-driver/mysql"
 
 
 
-
+var app *App
 
 type App struct {
 	sync.WaitGroup
@@ -144,11 +144,20 @@ func NewHTTPRouter( l *Logger ) *HTTPRouter {
 }
 func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
 
-	u := NewUser(r)
-	if u_c := u.ParseOrCreateUUID(); u_c != nil {
-		hr.wroot_l.PutInf( "New user: " + u.Uuid )
+	u, ok := getOrCreateUser( r, app.Users )
+	switch ok {
+	case false:
+		u_c := u.ParseOrCreateUUID(); if u_c == nil {
+			hr.wroot_l.PutNon("Could not generate UUID for user!!! Something error!");
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		http.SetCookie( w, u_c )
-	} else { hr.wroot_l.PutInf( "User: " + u.Uuid ) }
+		hr.wroot_l.PutInf( "New user: " + u.Uuid )
+	case true:
+	// MAKE SOME SECURE CHECKS ( VALIDATE ALL COOKIES!!!! )
+		hr.wroot_l.PutInf( "User: " + u.Uuid )
+	}
 
 // 	if hwid_c, e := u.GenHWID(); e != nil {
 // 		ht.wroot_l.PutNon( "Colud not set User's HWID cookie for " + u.Uuid )
@@ -167,6 +176,5 @@ func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
 
 	http.SetCookie( w, c )
 	http.Redirect( w, r, r.Header.Get("Origin"), 301 )
-//	w.Write( []byte("OK") )
 }
 

@@ -51,6 +51,7 @@ func NewUser( r *http.Request ) *User {
 	u := &User{ req: r }
 	return u
 }
+//	return bool - false: created New user or true: not
 func getOrCreateUser( r *http.Request, ub *UserBuf ) ( *User, bool ) {
 	hwid_c, e := r.Cookie("hwid")
 	switch e {
@@ -61,7 +62,6 @@ func getOrCreateUser( r *http.Request, ub *UserBuf ) ( *User, bool ) {
 	}
 	return &User{ req: r }, false
 }
-//	return bool - false: created New user or true: not
 func ( u *User ) SaveInCache( ub *UserBuf, hwid string ) {
 	ub.UserPut( hwid, *u )
 }
