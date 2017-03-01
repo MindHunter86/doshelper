@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"net/http"
 
 	"os"
@@ -8,6 +9,7 @@ import (
 	"syscall"
 )
 import "github.com/gorilla/mux"
+import "gopkg.in/mgo.v2"
 
 const (
 	ERR_SQL_CONNFAIL = "Connection status is not good!"
@@ -18,7 +20,6 @@ const (
 	appNetProto string = "unix"
 	appNetPath string = "/run/doshelpv2.sock"
 )
-
 
 
 
@@ -61,6 +62,25 @@ func main() {
 }
 
 
+const (
+	appMgTimeout = time.Second * 30
+	appMgHost = "mu.mh00.net"
+	appMgUser = "doshelper"
+	appMgPass = "abcdefg"
+	appMgDb = "doshelpv2"
+)
+
+type mgClient struct {
+	*mgo.Session
+}
+func NewMgClient() ( *mgo.Session, error ) {
+	ss, e := mgo.DialWithTimeout( "mongodb://" + appMgUser + ":" + appMgPass + "@" + appMgHost + "/" + appMgDb, appMgTimeout )
+	if e != nil { return nil,e }
+	return ss,nil
+}
+func ( mg *mgClient ) connDestroy() {
+	mg.Close()
+}
 
 type HTTPRouter struct {
 	Router *mux.Router

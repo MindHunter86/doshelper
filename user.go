@@ -68,6 +68,27 @@ func ( ub *UserBuf ) UserSave( u User ) {
 func ( ub *UserBuf ) UserLoad( hwid string ) {}
 
 
+// Client in webHandler
+// Get HWhash;
+//	if no hash - createUser ( create user with received values + put in cache );
+//	if hash is OK, search in cache.
+//		if hash is't cached; get value from DB
+//			if no record in DB - DROP user
+//			else update cache
+//	if hash is not OK
+//		create user in cache
+
+//???
+//	defer in handler - update in db ???
+
+
+func userCreate() {}
+// Create with received values in cache then in db
+// or get from DB & compare with received values. Making updates in cache in db
+func userUpdate() {}
+// Rewrite user in cache, update in db
+
+
 
 type User struct {
 	req *http.Request
