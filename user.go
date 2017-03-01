@@ -8,13 +8,16 @@ import (
 
 	"net/http"
 	"crypto/md5"
+	"database/sql"
 	"encoding/base64"
 )
 import gouuid "github.com/satori/go.uuid"
+import _ "github.com/go-sql-driver/mysql"
 
 
 const (
 	ERR_USER_UUIDEMP = "User's UUID is empty! Logical error!"
+	ERR_USER_HWIDEMP = "User's HWID is empty! Logical error!"
 )
 
 
@@ -31,17 +34,42 @@ func NewUserBuf() *UserBuf {
 		users: make(map[string]User),
 	}
 }
-func ( ub *UserBuf ) UserGet( hwid string ) ( *User, bool ) {
+func ( ub *UserBuf ) userGet( hwid string ) ( *User, bool ) {
 	ub.RLock()
 	u, ok := ub.users[hwid]
 	ub.RUnlock()
 	return &u, ok
 }
-func ( ub *UserBuf ) UserPut( hwid string, u User ) {
+func ( ub *UserBuf ) userPut( hwid string, u User ) {
 	ub.Lock()
 	ub.users[hwid] = u
 	ub.Unlock()
 }
+// true - if ok && user in cache
+// false - if user not in cache
+func ( ub *UserBuf ) userValidate( hwid string ) ( bool ) {
+	ub.RLock()
+	_, ok := ub.users[hwid]
+	return ok
+}
+
+
+func ( ub *UserBuf ) UserSave( u User ) {
+	app.Add(0)
+
+	hwid := u.getHWID()
+	if ub.userValidate(hwid) {
+	//	TRUE - let's only put in DB
+	} else {
+	// FALSE - let's put in cache, then put in DB	
+		ub.userPut( hwid, u )
+	}
+
+	app.Done()
+}
+func ( ub *UserBuf ) UserLoad( hwid string ) {}
+
+
 
 type User struct {
 	req *http.Request
@@ -122,8 +150,13 @@ func ( u *User ) GenSecureHash() ( *http.Cookie, error ) {
 		HttpOnly: true,
 	}, nil
 }
-func ( u *User ) GenHWID() ( *http.Cookie, error ) {
+func ( u *User ) getHWID() string {
+	hwid_c, e := u.req.Cookie("hwid"); if e != nil { return "" }
+	return hwid_c.Value
+}
+func ( u *User ) getOrCreateHWID() ( *http.Cookie, error ) {
 	if len(u.Uuid) <= 0 { return nil,errors.New(ERR_USER_UUIDEMP) }
+	if len(u.getHWID()) == 0 { return nil,errors.New(ERR_USER_HWIDEMP) }
 
 	var buf bytes.Buffer
 	buf.WriteString( u.req.Header.Get("X-Forwarded-For") + u.req.UserAgent() )

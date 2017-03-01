@@ -17,9 +17,19 @@ import _ "github.com/go-sql-driver/mysql"
 //const (
 //	ERR_
 //)
+const (
+	ERR_SQL_CONNFAIL = "Connection status is not good!"
+	ERR_SQL_NOUSERS = "Could not find any user with "
+)
 
-
-
+const (
+	appNetProto string = "unix"
+	appNetPath string = "/run/doshelpv2.sock"
+	appSqlHost string = "lambda.mh00.net:23306"
+	appSqlUser string = "doshelper"
+	appSqlPass string = "pyIF236NBfZLXUu1"
+	appSqlDb string = "doshelpv2"
+)
 
 
 
@@ -39,14 +49,19 @@ type App struct {
 	sync.WaitGroup
 	Users *UserBuf
 	Socket *SockListener
+	sqlClient *sqlClient
 }
 
-func NewApp( netproto, netpath string ) ( *App, error ) {
-	s, e := NewSockListener( netproto, netpath ); if e != nil {
+func NewApp() ( *App, error ) {
+	sl, e := NewSockListener( appNetProto, appNetPath ); if e != nil {
+		return nil,e
+	}
+	sc, e := newSqlClient( appSqlHost, appSqlUser, appSqlPass, appSqlDb ); if e != nil {
 		return nil,e
 	}
 	return &App{
-		Socket: s,
+		sqlClient: sc,
+		Socket: sl,
 	}, nil
 }
 func ( a *App ) Destroy() {
@@ -77,19 +92,11 @@ func ( a *App ) ThreadHTTPD() {
 
 
 func main() {
-	const (
-		appNetProto string = "unix"
-		appNetPath string = "/run/doshelpv2.sock"
-		appSqlHost string = "lambda.mh00.net:23306"
-		appSqlUser string = "doshelper"
-		appSqlPass string = "pyIF236NBfZLXUu1"
-		appSqlDb string = "doshelpv2"
-	)
 
 	l := NewLogger( LPFX_CORE )
 	l.PutOK("Core log system has been inited!")
 
-	app, e := NewApp( appNetProto, appNetPath ); if e != nil {
+	app, e := NewApp(); if e != nil {
 		l.PutNon("Could not create App!")
 		l.PutErr(e.Error()); return
 	} else { l.PutOK("App has been created!") }
@@ -130,6 +137,35 @@ func newSqlClient( h,u,p,d string ) ( *sqlClient, error ) {
 func ( sc *sqlClient ) connCheck() error {
 	return sc.dbconn.Ping()
 }
+func ( sc *sqlClient ) checkUser( hwid string ) bool {
+	e := sc.dbconn.QueryRow( "select uuid,secure_hash from users where hwid='?'", hwid )
+	switch e {
+	case nil:
+		return true
+	default:
+		return false
+	}
+}
+func ( sc *sqlClient ) getUser( hwid string ) ( *User, error ) {
+	u := new(User)
+	e := sc.dbconn.QueryRow( "select uuid,secure_hash from users where hwid='?'", hwid )
+				  .Scan(u.Uuid,u.secure_hash)
+	switch e {
+	case nil:
+		return &u,nil
+	case sql.ErrNoRows:
+		return nil,errors.New(ERR_SQL_NOUSERS)
+	default:
+		return nil,errors.New(e)
+	}
+}
+//	AFTER adding new table UUID
+// func ( sc *sqlClient ) putUser( hwid string, u *User ) error {
+// 	switch sc.checkUser(hwid) {
+// 	case true:
+// 		e := sc.dbconn.Exec("update u set ")
+// 	}
+// }
 
 
 type HTTPRouter struct {
@@ -156,8 +192,13 @@ func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
 		hr.wroot_l.PutInf( "New user: " + u.Uuid )
 	case true:
 	// MAKE SOME SECURE CHECKS ( VALIDATE ALL COOKIES!!!! )
+	// WRITE USER IN CACHE!!!
 		hr.wroot_l.PutInf( "User: " + u.Uuid )
 	}
+
+	hwid_c, e := u.getOrCreateHWID(); if e != nil { hr.wroot_l.PutNon(e.Error()) }
+	hr.wroot_l.PutInf( "User " + u.Uuid + " has HWID - " + hwid_c.Value )
+	http.SetCookie( w, hwid_c )
 
 // 	if hwid_c, e := u.GenHWID(); e != nil {
 // 		ht.wroot_l.PutNon( "Colud not set User's HWID cookie for " + u.Uuid )
