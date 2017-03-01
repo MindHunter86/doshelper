@@ -8,11 +8,9 @@ import (
 
 	"net/http"
 	"crypto/md5"
-	"database/sql"
 	"encoding/base64"
 )
 import gouuid "github.com/satori/go.uuid"
-import _ "github.com/go-sql-driver/mysql"
 
 
 const (
@@ -86,12 +84,12 @@ func getOrCreateUser( r *http.Request, ub *UserBuf ) ( *User, bool ) {
 	case nil:
 		break;
 	default:
-		if u, ok := ub.UserGet( hwid_c.Value ); ok { return u, ok }
+		if u, ok := ub.userGet( hwid_c.Value ); ok { return u, ok }
 	}
 	return &User{ req: r }, false
 }
 func ( u *User ) SaveInCache( ub *UserBuf, hwid string ) {
-	ub.UserPut( hwid, *u )
+	ub.userPut( hwid, *u )
 }
 func ( u *User ) ParseOrCreateUUID() *http.Cookie {
 	uuid_c, _ := u.req.Cookie("uuid")

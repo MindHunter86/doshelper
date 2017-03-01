@@ -3,8 +3,6 @@ package main
 import (
 	"sync"
 
-	"database/sql"
-
 	"net/http"
 
 	"os"
@@ -12,7 +10,6 @@ import (
 	"syscall"
 )
 import "github.com/gorilla/mux"
-import _ "github.com/go-sql-driver/mysql"
 
 //const (
 //	ERR_
@@ -25,10 +22,6 @@ const (
 const (
 	appNetProto string = "unix"
 	appNetPath string = "/run/doshelpv2.sock"
-	appSqlHost string = "lambda.mh00.net:23306"
-	appSqlUser string = "doshelper"
-	appSqlPass string = "pyIF236NBfZLXUu1"
-	appSqlDb string = "doshelpv2"
 )
 
 
@@ -49,18 +42,13 @@ type App struct {
 	sync.WaitGroup
 	Users *UserBuf
 	Socket *SockListener
-	sqlClient *sqlClient
 }
 
 func NewApp() ( *App, error ) {
 	sl, e := NewSockListener( appNetProto, appNetPath ); if e != nil {
 		return nil,e
 	}
-	sc, e := newSqlClient( appSqlHost, appSqlUser, appSqlPass, appSqlDb ); if e != nil {
-		return nil,e
-	}
 	return &App{
-		sqlClient: sc,
 		Socket: sl,
 	}, nil
 }
@@ -122,50 +110,6 @@ func main() {
 	}
 }
 
-
-type sqlClient struct {
-	dbconn *sql.DB
-}
-// host port user pass db string
-func newSqlClient( h,u,p,d string ) ( *sqlClient, error ) {
-	db, e := sql.Open( "mysql", u + ":" + p + "@" + h + "/" + d ); if e != nil { return nil,e }
-	if e := db.Ping(); e != nil { return nil,e }
-	return &sqlClient{
-		dbconn: db,
-	}, nil
-}
-func ( sc *sqlClient ) connCheck() error {
-	return sc.dbconn.Ping()
-}
-func ( sc *sqlClient ) checkUser( hwid string ) bool {
-	e := sc.dbconn.QueryRow( "select uuid,secure_hash from users where hwid='?'", hwid )
-	switch e {
-	case nil:
-		return true
-	default:
-		return false
-	}
-}
-func ( sc *sqlClient ) getUser( hwid string ) ( *User, error ) {
-	u := new(User)
-	e := sc.dbconn.QueryRow( "select uuid,secure_hash from users where hwid='?'", hwid )
-				  .Scan(u.Uuid,u.secure_hash)
-	switch e {
-	case nil:
-		return &u,nil
-	case sql.ErrNoRows:
-		return nil,errors.New(ERR_SQL_NOUSERS)
-	default:
-		return nil,errors.New(e)
-	}
-}
-//	AFTER adding new table UUID
-// func ( sc *sqlClient ) putUser( hwid string, u *User ) error {
-// 	switch sc.checkUser(hwid) {
-// 	case true:
-// 		e := sc.dbconn.Exec("update u set ")
-// 	}
-// }
 
 
 type HTTPRouter struct {
