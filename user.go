@@ -22,38 +22,34 @@ const (
 //
 // Key: user's HWID
 // Value: *User
-type UserBuf struct {
+// return &UserBuf{ clients: make(map[string]client)	}
+type activeClients struct {
 	sync.RWMutex
-	users map[string]client
+	clients map[string]client
 }
-func NewUserBuf() *UserBuf {
-	return &UserBuf{
-		users: make(map[string]client),
-	}
+func ( ac *activeClients ) get( hwk string ) ( *client, bool ) {
+	ac.RLock()
+	cl, ok := ac.clients[hwk]
+	ac.RUnlock()
+	return &cl, ok
 }
-func ( ub *UserBuf ) userGet( hwid string ) ( *client, bool ) {
-	ub.RLock()
-	u, ok := ub.users[hwid]
-	ub.RUnlock()
-	return &u, ok
-}
-func ( ub *UserBuf ) userPut( hwid string, cl client ) {
-	ub.Lock()
-	ub.users[hwid] = cl
-	ub.Unlock()
-}
-// true - if ok && user in cache
-// false - if user not in cache
-func ( ub *UserBuf ) userValidate( hwid string ) ( bool ) {
-	ub.RLock()
-	_, ok := ub.users[hwid]
+func ( ac *activeClients ) validate( hwk string ) bool {
+	ac.RLock()
+	_, ok := ac.clients[hwk]
+	ac.RUnlock()
 	return ok
 }
+func ( ac *activeClients ) put( hwk string, cl client ) {
+	ac.Lock()
+	ac.clients[hwk] = cl
+	ac.Unlock()
+}
 
 
-func ( ub *UserBuf ) UserSave( u client ) {
-	app.Add(0)
 
+// func ( ub *UserBuf ) UserSave( u client ) {
+// 	app.Add(0)
+// 
 // 	hwid := u.getHWID()
 // 	if ub.userValidate(hwid) {
 // 	//	TRUE - let's only put in DB
@@ -62,9 +58,9 @@ func ( ub *UserBuf ) UserSave( u client ) {
 // 		ub.userPut( hwid, u )
 // 	}
 // 
-	app.Done()
-}
-func ( ub *UserBuf ) UserLoad( hwid string ) {}
+// 	app.Done()
+// }
+// func ( ub *UserBuf ) UserLoad( hwid string ) {}
 
 
 // Client in webHandler
@@ -104,6 +100,21 @@ var (
 	ERR_USER_NOUUID = errors.New("User's UUID is empty! Logical error!")
 	ERR_MAIN_NOPARAM = errors.New("Received empty params! Function ferror!")
 )
+
+
+
+// type sqlClient struct {
+// 	conn *sql.DB
+// }
+// func NewSQLClient( host,user,pass,database string ) ( *sql.DB, error ) {
+// 	db, e := sql.Open( "msyql", user + ":" + p + "@" + host + "/" + database )
+// 	if e != nil || db.Ping() != nil { return nil,e }
+// 	return &sqlClient{ conn: db }
+// }
+// func ( sc *sqlClient ) connectionCheck() error { return sc.conn.Ping() }
+// func ( sc *sqlClient ) connectionClose() {}
+
+
 
 type client struct {
 	uuid, sec_link string

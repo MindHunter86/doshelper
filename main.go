@@ -64,17 +64,36 @@ func main() {
 	}
 }
 
-type HTTPRouter struct {
-	Router *mux.Router
-	wroot_l *Logger
+
+type httpRouter struct {
+	*mux.Router
+	lgRoot *Logger
+	lgNotfound *Logger
+	lgUserManage *Logger
 }
-func NewHTTPRouter( l *Logger ) *HTTPRouter {
-	return &HTTPRouter{
+func newHttpRouter() *httpRouter {
+	return &httpRouter{
 		Router: mux.NewRouter(),
-		wroot_l: NewLogger( LPFX_WEBROOT ),
+		lgRoot: NewLogger( LPFX_WEBROOT ),
+		lgNotfound: NewLogger( LPFX_NOTFOUND ),
+		lgUserManage: NewLogger( LPFX_USERMANAGE ),
 	}
 }
-func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
+func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
+	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
+		hr.lgUserManage.PutInf("Middleware")
+		next.ServeHTTP(w,r)
+	})
+}
+func ( hr *httpRouter ) webRoot( w http.ResponseWriter, r *http.Request ) {
+	hr.lgRoot.PutInf("WebRoot")
+
+}
+func ( hr *httpRouter ) webNotFound( w http.ResponseWriter, r *http.Request ) {
+	w.Write( []byte("Sorry, but page was killed!") )
+}
+
+
 
 // 	u, ok := getOrCreateUser(r)
 // 	switch ok {
@@ -113,5 +132,3 @@ func ( hr *HTTPRouter ) WebRoot( w http.ResponseWriter, r *http.Request ) {
 // 
 // 	http.SetCookie( w, c )
 // 	http.Redirect( w, r, r.Header.Get("Origin"), 301 )
-}
-
