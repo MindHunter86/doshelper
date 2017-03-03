@@ -15,6 +15,7 @@ func NewApp() ( *App, error ) {
 		return nil,e
 	}
 	return &App{
+		Users: NewUserBuf(),
 		Socket: sl,
 	}, nil
 }

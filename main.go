@@ -18,7 +18,7 @@ const (
 
 const (
 	appNetProto string = "unix"
-	appNetPath string = "/run/doshelpv2.sock"
+	appNetPath string = "./doshelpv2.sock"
 )
 
 
@@ -29,6 +29,11 @@ const (
 
 // Change mux? https://godoc.org/github.com/husobee/vestigo#CustomNotFoundHandlerFunc
 
+
+// mysql relations http://stackoverflow.com/questions/260441/how-to-create-relationships-in-mysql
+
+
+// siege performance
 
 func main() {
 

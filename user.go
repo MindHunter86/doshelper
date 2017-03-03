@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"sync"
 	"bytes"
 	"errors"
@@ -101,12 +102,7 @@ func NewUser( r *http.Request ) *User {
 //	return bool - false: created New user or true: not
 func getOrCreateUser( r *http.Request, ub *UserBuf ) ( *User, bool ) {
 	hwid_c, e := r.Cookie("hwid")
-	switch e {
-	case nil:
-		break;
-	default:
-		if u, ok := ub.userGet( hwid_c.Value ); ok { return u, ok }
-	}
+	if e == nil { if u, ok := ub.userGet( hwid_c.Value ); ok { return u, ok } }
 	return &User{ req: r }, false
 }
 func ( u *User ) SaveInCache( ub *UserBuf, hwid string ) {
