@@ -7,7 +7,6 @@ type App struct {
 	sync.WaitGroup
 	Users *UserBuf
 	Socket *SockListener
-	mgo *mgClient
 }
 
 func NewApp() ( *App, error ) {
@@ -21,7 +20,6 @@ func NewApp() ( *App, error ) {
 }
 func ( a *App ) Destroy() {
 	a.Socket.Close()
-	if a.mgo != nil { a.mgo.connDestroy() }
 }
 func ( a *App ) ThreadHTTPD() {
 	a.Add(1)
