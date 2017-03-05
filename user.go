@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log" // for debug (tmp)
 	"sync"
 	"bytes"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 )
+import gouuid "github.com/satori/go.uuid"
 
 
 const (
@@ -118,25 +120,70 @@ var (
 
 type client struct {
 	uuid, sec_link string
+	addr, user_agent, origin, referer string
 }
 // Return Client and Client's HW key
-func newClient( h *http.Header ) ( *client, string ) {
-	uid := h.Get("X-Client-UUID-Got")
-	if len(uid) == 0 { uid = h.Get("X-Client-UUID-Set") }
+// REFACTORING NEEDED
+func newClient( h *http.Header ) ( *client, *http.Cookie, error ) {
+	var uid string = ""
+	var uid_c *http.Cookie = nil
+	var e error
+
+	uid = h.Get("X-Client-UUID")
+	if len(uid) == 0 {
+		uid_c, uid, e = generateUid( h.Get("X-Forwarded-Proto"), h.Get("X-Forwarded-Host") )
+		if e != nil { return nil,nil,e }
+	}
 
 	return &client{
 		uuid: uid,
 		sec_link: h.Get("X-Client-SecureLink"),
-	}, h.Get("X-Client-HWID-Got")
+		addr: h.Get("X-Real-IP"),
+		user_agent: h.Get("User-Agent"),
+		origin: h.Get("Origin"),
+		referer: h.Get("Referer"),
+	}, uid_c, nil
 }
-func ( cl *client ) generateHwKey( raddr, uagent, scheme, host string ) ( *http.Cookie, error ) {
+
+// HELPER
+// refactoring needed
+func generateUid( scheme, host string ) ( *http.Cookie, string, error ) {
+	if len(scheme) == 0 || len(host) == 0 { return nil,"",ERR_MAIN_NOPARAM }
+
+	var https bool = false
+	if scheme == "https" { https = true }
+
+	var uid string = gouuid.NewV4().String()
+
+	return &http.Cookie{
+		Name: "uuid",
+		Value: uid,
+		Path: "/",
+		Domain: host,
+		Secure: https,
+		HttpOnly: true,
+	}, uid, nil
+}
+func ( cl *client ) getHwKey( hwk, scheme, host string ) ( *http.Cookie, string, error ) {
+	switch len(hwk) {
+	case 0:
+		hwk_c, e := cl.generateHwKey( scheme, host ); if e != nil { return nil,"",e }
+		return hwk_c, hwk_c.Value, nil
+	default:
+		return nil, hwk, nil
+	}
+}
+func ( cl *client ) generateHwKey( scheme, host string ) ( *http.Cookie, error ) {
 	if len(cl.uuid) == 0 { return nil,ERR_USER_NOUUID }
-	if len(raddr) == 0 || len(uagent) == 0 || len(scheme) == 0 || len(host) == 0 {
+	log.Println( scheme, host )
+	if len(scheme) == 0 || len(host) == 0 {
 		return nil,ERR_MAIN_NOPARAM
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString( raddr + uagent )
+	buf.WriteString( cl.addr + cl.user_agent )
+// DEBUG:
+	log.Println( "HWK_BUF: ", buf.String() )
 
 	t1 := md5.Sum( buf.Bytes() )
 	t2 := base64.StdEncoding.EncodeToString( t1[:] )
@@ -155,14 +202,16 @@ func ( cl *client ) generateHwKey( raddr, uagent, scheme, host string ) ( *http.
 		HttpOnly: true,
 	}, nil
 }
-func ( cl *client ) generateSecLink( raddr, uagent, secret, scheme, host string ) ( *http.Cookie, error ) {
+func ( cl *client ) generateSecLink( secret, scheme, host string ) ( *http.Cookie, error ) {
 	if len(cl.uuid) == 0 { return nil,ERR_USER_NOUUID }
-	if len(raddr) == 0 || len(uagent) == 0 || len(secret) == 0 || len(scheme) == 0 || len(host) == 0 {
+	if len(secret) == 0 || len(scheme) == 0 || len(host) == 0 {
 		return nil,ERR_MAIN_NOPARAM
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString( raddr + cl.uuid + uagent + secret )
+	buf.WriteString( cl.addr + cl.uuid + cl.user_agent + secret )
+// DEBUG:
+	log.Println( "SECLINK_BUF: ", buf.String() )
 
 	t1 := md5.Sum( buf.Bytes() )
 	t2 := base64.StdEncoding.EncodeToString( t1[:] )

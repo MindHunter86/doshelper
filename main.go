@@ -12,6 +12,8 @@ import "github.com/gorilla/mux"
 const (
 	ERR_SQL_CONNFAIL = "Connection status is not good!"
 	ERR_SQL_NOUSERS = "Could not find any user with "
+	ERR_MDL_USERFAIL = "Sorry, but we could not identify you! =(\nTry again later"
+	ERR_MDL_HASHFAIL = "Sorry, but we could not handle your query data!\nTry again later"
 )
 
 const (
@@ -81,7 +83,31 @@ func newHttpRouter() *httpRouter {
 }
 func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
-		hr.lgUserManage.PutInf("Middleware")
+
+		cl, uid_c, e := newClient(&r.Header); if e != nil {
+			hr.lgUserManage.PutNon(e.Error())
+			http.Error( w, ERR_MDL_USERFAIL, http.StatusPreconditionFailed )
+			return
+		} else if uid_c != nil { http.SetCookie(  w, uid_c ) }
+
+		var proto,host string
+		proto = r.Header.Get("X-Forwarded-Proto")
+		host = r.Header.Get("X-Forwarded-Host")
+
+		hwk_c, hwk, e := cl.getHwKey( r.Header.Get("X-Client-HWID"), proto, host ); if e != nil {
+			hr.lgUserManage.PutNon( "CL_" + cl.uuid + ": genHW error: " + e.Error() )
+			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
+			return
+		} else if hwk_c != nil { http.SetCookie( w, hwk_c ) }
+
+		sl_c, e := cl.generateSecLink( r.Header.Get("X-SecureLink-Secret"), proto, host ); if e != nil {
+			hr.lgUserManage.PutNon( "CL_" + cl.uuid + ": genSL error: " + e.Error() )
+			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
+			return
+		} else { http.SetCookie( w, sl_c ) }
+
+		hr.lgUserManage.PutInf(hwk)
+
 		next.ServeHTTP(w,r)
 	})
 }
