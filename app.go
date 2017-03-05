@@ -9,6 +9,7 @@ import "net/http"
 var app *App
 type App struct {
 	sync.WaitGroup
+	clients *activeClients
 	Socket *SockListener
 }
 
@@ -17,6 +18,7 @@ func NewApp() ( *App, error ) {
 		return nil,e
 	}
 	return &App{
+		clients: &activeClients{},
 		Socket: sl,
 	}, nil
 }
