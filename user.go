@@ -123,46 +123,41 @@ type client struct {
 	addr, user_agent, origin, referer string
 }
 // Return Client and Client's HW key
-// REFACTORING NEEDED
 func newClient( h *http.Header ) ( *client, *http.Cookie, error ) {
-	var uid string = ""
-	var uid_c *http.Cookie = nil
-	var e error
-
-	uid = h.Get("X-Client-UUID")
-	if len(uid) == 0 {
-		uid_c, uid, e = generateUid( h.Get("X-Forwarded-Proto"), h.Get("X-Forwarded-Host") )
-		if e != nil { return nil,nil,e }
-	}
-
-	return &client{
-		uuid: uid,
+	cl := &client{
 		sec_link: h.Get("X-Client-SecureLink"),
 		addr: h.Get("X-Real-IP"),
 		user_agent: h.Get("User-Agent"),
 		origin: h.Get("Origin"),
 		referer: h.Get("Referer"),
-	}, uid_c, nil
-}
+	}
 
-// HELPER
-// refactoring needed
-func generateUid( scheme, host string ) ( *http.Cookie, string, error ) {
-	if len(scheme) == 0 || len(host) == 0 { return nil,"",ERR_MAIN_NOPARAM }
+	cl.uuid = h.Get("X-Client-UUID")
+	switch len(cl.uuid) {
+	case 0:
+		if uid_c, e := cl.generateUid( h.Get("X-Forwarded-Proto"), h.Get("X-Forwarded-Host") ); e != nil {
+			return nil,nil,e
+		} else { return cl, uid_c, nil }
+	default:
+		return cl, nil, nil
+	}
+}
+func ( cl *client ) generateUid( scheme, host string ) ( *http.Cookie, error ) {
+	if len(scheme) == 0 || len(host) == 0 { return nil,ERR_MAIN_NOPARAM }
 
 	var https bool = false
 	if scheme == "https" { https = true }
 
-	var uid string = gouuid.NewV4().String()
+	cl.uuid = gouuid.NewV4().String()
 
 	return &http.Cookie{
 		Name: "uuid",
-		Value: uid,
+		Value: cl.uuid,
 		Path: "/",
 		Domain: host,
 		Secure: https,
 		HttpOnly: true,
-	}, uid, nil
+	}, nil
 }
 func ( cl *client ) getHwKey( hwk, scheme, host string ) ( *http.Cookie, string, error ) {
 	switch len(hwk) {
