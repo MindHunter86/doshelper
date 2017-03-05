@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log" // for debug (tmp)
 	"sync"
 	"bytes"
 	"errors"
@@ -122,7 +121,6 @@ type client struct {
 	uuid, sec_link string
 	addr, user_agent, origin, referer string
 }
-// Return Client and Client's HW key
 func newClient( h *http.Header ) ( *client, *http.Cookie, error ) {
 	cl := &client{
 		sec_link: h.Get("X-Client-SecureLink"),
@@ -170,15 +168,12 @@ func ( cl *client ) getHwKey( hwk, scheme, host string ) ( *http.Cookie, string,
 }
 func ( cl *client ) generateHwKey( scheme, host string ) ( *http.Cookie, error ) {
 	if len(cl.uuid) == 0 { return nil,ERR_USER_NOUUID }
-	log.Println( scheme, host )
 	if len(scheme) == 0 || len(host) == 0 {
 		return nil,ERR_MAIN_NOPARAM
 	}
 
 	var buf bytes.Buffer
 	buf.WriteString( cl.addr + cl.user_agent )
-// DEBUG:
-	log.Println( "HWK_BUF: ", buf.String() )
 
 	t1 := md5.Sum( buf.Bytes() )
 	t2 := base64.StdEncoding.EncodeToString( t1[:] )
@@ -205,8 +200,6 @@ func ( cl *client ) generateSecLink( secret, scheme, host string ) ( *http.Cooki
 
 	var buf bytes.Buffer
 	buf.WriteString( cl.addr + cl.uuid + cl.user_agent + secret )
-// DEBUG:
-	log.Println( "SECLINK_BUF: ", buf.String() )
 
 	t1 := md5.Sum( buf.Bytes() )
 	t2 := base64.StdEncoding.EncodeToString( t1[:] )

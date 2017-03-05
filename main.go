@@ -85,8 +85,8 @@ func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
 
 		cl, uid_c, e := newClient(&r.Header); if e != nil {
-			hr.lgUserManage.PutNon(e.Error())
-			http.Error( w, ERR_MDL_USERFAIL, http.StatusPreconditionFailed )
+			hr.lgUserManage.PutWrn(e.Error())
+			http.Error( w, ERR_MDL_USERFAIL, http.StatusInternalServerError )
 			return
 		} else if uid_c != nil { http.SetCookie(  w, uid_c ) }
 
@@ -95,13 +95,13 @@ func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 		host = r.Header.Get("X-Forwarded-Host")
 
 		hwk_c, hwk, e := cl.getHwKey( r.Header.Get("X-Client-HWID"), proto, host ); if e != nil {
-			hr.lgUserManage.PutNon( "CL_" + cl.uuid + ": genHW error: " + e.Error() )
+			hr.lgUserManage.PutWrn( "CL_" + cl.uuid + ": genHW error: " + e.Error() )
 			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
 			return
 		} else if hwk_c != nil { http.SetCookie( w, hwk_c ) }
 
 		sl_c, e := cl.generateSecLink( r.Header.Get("X-SecureLink-Secret"), proto, host ); if e != nil {
-			hr.lgUserManage.PutNon( "CL_" + cl.uuid + ": genSL error: " + e.Error() )
+			hr.lgUserManage.PutWrn( "CL_" + cl.uuid + ": genSL error: " + e.Error() )
 			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
 			return
 		} else { http.SetCookie( w, sl_c ) }
