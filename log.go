@@ -2,10 +2,8 @@ package main
 
 
 import (
-	"os"
 	"log"
 	"sync"
-	"errors"
 )
 
 
@@ -17,8 +15,9 @@ const (
 	LPFX_USERMANAGE
 )
 const (
-	LLEV_OK = iota
-	LLEV_NOT
+	LLEV_DBG = iota
+	LLEV_OK
+	LLEV_NON
 	LLEV_INF
 	LLEV_WRN
 	LLEV_ERR
@@ -26,51 +25,77 @@ const (
 
 type Logger struct {
 	*log.Logger
+	ch_message chan string
 	sync.RWMutex
-	Prefix uint8
+	prefix uint8
 }
 
 
-func NewLogger( prefix uint8 ) *Logger {
-	return &Logger{
-		Logger: log.New( os.Stdout, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
-		Prefix: prefix,
-	}
-}
 func ( l *Logger ) SetPrefix( p uint8 ) {
-	l.Lock(); l.Prefix = p; l.Unlock()
+	l.Lock(); l.prefix = p; l.Unlock()
 }
-func ( l *Logger ) GetPrefix() string {
+func ( l *Logger ) getPrefix( colo bool ) string {
 	l.RLock()
 	defer l.RUnlock()
 
-	switch l.Prefix {
+	switch l.prefix {
 	case LPFX_CORE:
-		return "\x1b[36;1m[CORE]:\x1b[0m"
+		if colo { return "\x1b[36;1m[CORE]:\x1b[0m" } else { return "[CORE]: " }
 	case LPFX_HTTPD:
-		return "\x1b[36;1m[HTTPD]:\x1b[0m"
+		if colo { return "\x1b[36;1m[HTTPD]:\x1b[0m" } else { return "[HTTPD]: " }
 	case LPFX_WEBROOT:
-		return "\x1b[36;1m[HTTPD-WEBROOT]:\x1b[0m"
+		if colo { return "\x1b[36;1m[HTTPD-WEBROOT]:\x1b[0m" } else { return "[HTTPD-WEBROOT]: " }
 	case LPFX_USERMANAGE:
-		return "\x1b[36;1m[HTTPD-MIDDLEUSER]:\x1b[0m"
+		if colo { return "\x1b[36;1m[HTTPD-MIDDLEUSER]:\x1b[0m" } else { return "[HTTPD-MIDDLEUSER]: " }
 	default:
 		return ""
 	}
 }
-func ( l *Logger ) PutOK( txt string ) {
-	l.Logger.Println( l.GetPrefix(), "\x1b[32;1m✔\x1b[0m", txt )
+func ( l *Logger ) wr( lvl uint8, m string ) {
+// log to file
+	l.ch_message <- l.getPrefix(false) + m
+
+// log to stdout
+	switch lvl {
+	case LLEV_DBG:
+		l.Println( l.getPrefix(true), m )
+	case LLEV_OK:
+		l.Println( l.getPrefix(true), "\x1b[32;1m✔\x1b[0m", m )
+	case LLEV_NON:
+		l.Println( l.getPrefix(true), "\x1b[31;1m✖\x1b[0m", m)
+	case LLEV_INF:
+		l.Println( l.getPrefix(true), "\x1b[34;1m🛈\x1b[0m", m)
+	case LLEV_WRN:
+		l.Println( l.getPrefix(true), "\x1b[33;1m❢\x1b[0;33;22m", m, "\x1b[0m")
+	case LLEV_ERR:
+		l.Println( l.getPrefix(true), "\x1b[31;22m❢\x1b[0;31;1m", m, "\x1b[0m")
+	}
 }
-func ( l *Logger ) PutNon( txt string ) {
-	l.Logger.Println( l.GetPrefix(), "\x1b[31;1m✖\x1b[0m", txt )
+
+
+type fileLogger struct {
+	*log.Logger
+	sync.WaitGroup
+	mess_queue chan string
+	stop_handle chan bool
 }
-func ( l *Logger ) PutInf( txt string ) {
-	l.Logger.Println( l.GetPrefix(), "\x1b[34;1m🛈\x1b[0m", txt )
+
+func ( fl *fileLogger ) start() {
+	go func() {
+		fl.Add(1)
+		for {
+			select{
+			case m := <- fl.mess_queue:
+				fl.Println(m)
+			case <- fl.stop_handle:
+				fl.Println("Log worker has been stopped!")
+				return
+			}
+		}
+		fl.Done()
+	}()
 }
-func ( l *Logger ) PutWrn( txt string ) error {
-	l.Logger.Println( l.GetPrefix(), "\x1b[33;1m❢\x1b[0;33;22m", txt, "\x1b[0m" )
-	return errors.New(txt)
-}
-func ( l *Logger ) PutErr( txt string ) error {
-	l.Logger.Println( l.GetPrefix(), "\x1b[31;22m❢\x1b[0;31;1m", txt, "\x1b[0m" )
-	return errors.New(txt)
+func ( fl *fileLogger ) stop() {
+	fl.Println("Trying to close File Logger...")
+	close(fl.stop_handle)
 }

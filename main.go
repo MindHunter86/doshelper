@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"log"
 )
 import "github.com/gorilla/mux"
 
@@ -19,6 +20,8 @@ const (
 const (
 	appNetProto string = "unix"
 	appNetPath string = "./doshelpv2.sock"
+	appLogPath string = "./app.log"
+	appLogBuf int = 128
 )
 
 
@@ -28,6 +31,7 @@ const (
 ///		WARNING!!!!
 
 // Change mux? https://godoc.org/github.com/husobee/vestigo#CustomNotFoundHandlerFunc
+//	NO: remove mux! We have only one route!!
 
 
 // mysql relations http://stackoverflow.com/questions/260441/how-to-create-relationships-in-mysql
@@ -35,31 +39,43 @@ const (
 
 // siege performance
 
+
+
+
+
+// PROBLEM!!!!!! LOG MUST BE DEFINED BEFORE NEWAPP() FUNCTION
 func main() {
-
-	l := NewLogger( LPFX_CORE )
-	l.PutOK("Core log system has been inited!")
-
 	app, e := NewApp(); if e != nil {
-		l.PutNon("Could not create App!")
-		l.PutErr(e.Error()); return
-	} else { l.PutOK("App has been created!") }
+//		l.wr( LLEV_NON, "Could not create App!")
+//		l.wr( LLEV_ERR, e.Error()); return
+		log.Println( e.Error() )
+		os.Exit(0)
+	}
+//	} else { l.wr( LLEV_OK, "App has been created!") }
+
+	app.file_logger, e = app.newFileLogger( "./app.log", 128 ); if e != nil { return }
+	l := app.newLogger(LPFX_CORE)
+	l.wr( LLEV_OK, "Core log system has been inited!")
+
 	defer func() {
 		app.Wait()
 		app.Destroy()
-		l.PutOK("App has been destroyed!")
+		l.wr( LLEV_OK, "App has been destroyed!")
 	}()
+
+
+
 
 	var sgn = make( chan os.Signal )
 	signal.Notify( sgn, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT )
-	l.PutOK("Kernel signal catcher has been initialised!")
+	l.wr( LLEV_OK, "Kernel signal catcher has been initialized!")
 
 	go app.ThreadHTTPD()
 
 	for {
 		select {
 		case <-sgn:
-			l.PutWrn("Catched QUIT signal from kernel! Stopping prg...")
+			l.wr( LLEV_WRN, "Catched QUIT signal from kernel! Stopping prg...")
 			app.Socket.Close()
 			return
 		}
@@ -73,19 +89,11 @@ type httpRouter struct {
 	lgNotfound *Logger
 	lgUserManage *Logger
 }
-func newHttpRouter() *httpRouter {
-	return &httpRouter{
-		Router: mux.NewRouter(),
-		lgRoot: NewLogger( LPFX_WEBROOT ),
-		lgNotfound: NewLogger( LPFX_NOTFOUND ),
-		lgUserManage: NewLogger( LPFX_USERMANAGE ),
-	}
-}
 func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
 
 		cl, uid_c, e := newClient(&r.Header); if e != nil {
-			hr.lgUserManage.PutWrn(e.Error())
+			hr.lgUserManage.wr( LLEV_WRN, e.Error())
 			http.Error( w, ERR_MDL_USERFAIL, http.StatusInternalServerError )
 			return
 		} else if uid_c != nil { http.SetCookie(  w, uid_c ) }
@@ -95,24 +103,24 @@ func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 		host = r.Header.Get("X-Forwarded-Host")
 
 		hwk_c, hwk, e := cl.getHwKey( r.Header.Get("X-Client-HWID"), proto, host ); if e != nil {
-			hr.lgUserManage.PutWrn( "CL_" + cl.uuid + ": genHW error: " + e.Error() )
+			hr.lgUserManage.wr( LLEV_WRN, "CL_" + cl.uuid + ": genHW error: " + e.Error() )
 			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
 			return
 		} else if hwk_c != nil { http.SetCookie( w, hwk_c ) }
 
 		sl_c, e := cl.generateSecLink( r.Header.Get("X-SecureLink-Secret"), proto, host ); if e != nil {
-			hr.lgUserManage.PutWrn( "CL_" + cl.uuid + ": genSL error: " + e.Error() )
+			hr.lgUserManage.wr( LLEV_WRN, "CL_" + cl.uuid + ": genSL error: " + e.Error() )
 			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
 			return
 		} else { http.SetCookie( w, sl_c ) }
 
-		hr.lgUserManage.PutInf(hwk)
+		hr.lgUserManage.wr( LLEV_INF, hwk)
 
 		next.ServeHTTP(w,r)
 	})
 }
 func ( hr *httpRouter ) webRoot( w http.ResponseWriter, r *http.Request ) {
-	hr.lgRoot.PutInf("WebRoot")
+	hr.lgRoot.wr( LLEV_INF, "WebRoot")
 
 }
 func ( hr *httpRouter ) webNotFound( w http.ResponseWriter, r *http.Request ) {
