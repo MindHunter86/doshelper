@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"log"
 )
 import "github.com/gorilla/mux"
 
@@ -20,7 +19,7 @@ const (
 const (
 	appNetProto string = "unix"
 	appNetPath string = "./doshelpv2.sock"
-	appLogPath string = "./app.log"
+	appLogPath string = "./doshelpv2.log"
 	appLogBuf int = 128
 )
 
@@ -45,37 +44,28 @@ const (
 
 // PROBLEM!!!!!! LOG MUST BE DEFINED BEFORE NEWAPP() FUNCTION
 func main() {
-	app, e := NewApp(); if e != nil {
-//		l.wr( LLEV_NON, "Could not create App!")
-//		l.wr( LLEV_ERR, e.Error()); return
-		log.Println( e.Error() )
-		os.Exit(0)
+	app, ok := newApp(); if !ok {
+		os.Exit(1)
 	}
-//	} else { l.wr( LLEV_OK, "App has been created!") }
-
-	app.file_logger, e = app.newFileLogger( "./app.log", 128 ); if e != nil { return }
-	l := app.newLogger(LPFX_CORE)
-	l.wr( LLEV_OK, "Core log system has been inited!")
+	app.stdout_logger.wr( LLEV_OK, "CORE log system has benn inited!")
+	app.stdout_logger.wr( LLEV_OK, "Application started!")
 
 	defer func() {
 		app.Wait()
 		app.Destroy()
-		l.wr( LLEV_OK, "App has been destroyed!")
+		app.stdout_logger.wr( LLEV_OK, "App has been destroyed!")
 	}()
-
-
-
 
 	var sgn = make( chan os.Signal )
 	signal.Notify( sgn, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT )
-	l.wr( LLEV_OK, "Kernel signal catcher has been initialized!")
+	app.stdout_logger.wr( LLEV_OK, "Kernel signal catcher has been initialized!")
 
 	go app.ThreadHTTPD()
 
 	for {
 		select {
 		case <-sgn:
-			l.wr( LLEV_WRN, "Catched QUIT signal from kernel! Stopping prg...")
+			app.stdout_logger.wr( LLEV_WRN, "Catched QUIT signal from kernel! Stopping prg...")
 			app.Socket.Close()
 			return
 		}

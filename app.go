@@ -15,18 +15,26 @@ type App struct {
 	clients *activeClients
 	Socket *SockListener
 	file_logger *fileLogger
+	stdout_logger *Logger
 }
 
-	appLogPath string = "./app.log"
-	appLogBuf int = 128
-func NewApp() ( *App, error ) {
+func newApp() ( *App, bool ) {
 	sl, e := NewSockListener( appNetProto, appNetPath ); if e != nil {
-		return nil,e
+		log.Println(e.Error())
+		return nil,false
 	}
-	return &App{
+
+	fl, e := app.newFileLogger( appLogPath, appLogBuf ); if e != nil {
+		log.Println(e.Error())
+		return nil,false
+	}
+	app := &App{
 		clients: &activeClients{},
 		Socket: sl,
-	}, nil
+		file_logger: fl,
+	}
+	app.stdout_logger = app.newLogger(LPFX_CORE)
+	return app,true
 }
 func ( a *App ) Destroy() {
 	a.Socket.Close()
@@ -84,7 +92,7 @@ func ( a *App ) newFileLogger( fpath string, logbuf int ) ( *fileLogger, error )
 
 	return &fileLogger{
 		Logger: log.New( fd, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
-		mess_queue: make( chan string,  ),
+		mess_queue: make( chan string, logbuf ),
 		stop_handle: make( chan bool ),
 	},nil
 }
