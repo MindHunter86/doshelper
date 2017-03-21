@@ -36,9 +36,7 @@ const (
 // mysql relations http://stackoverflow.com/questions/260441/how-to-create-relationships-in-mysql
 
 
-// siege performance
-
-
+// siege performance testing
 
 
 
@@ -47,13 +45,17 @@ func main() {
 	app, ok := newApp(); if !ok {
 		os.Exit(1)
 	}
-	app.stdout_logger.wr( LLEV_OK, "CORE log system has benn inited!")
+	app.stdout_logger.wr( LLEV_OK, "CORE log system has been inited!")
 	app.stdout_logger.wr( LLEV_OK, "Application started!")
 
 	defer func() {
-		app.Wait()
+		app.stdout_logger.wr( LLEV_INF, "Reached app destroy function")
 		app.Destroy()
+		app.stdout_logger.wr( LLEV_INF, "Reached app wair function")
+		app.Wait()
 		app.stdout_logger.wr( LLEV_OK, "App has been destroyed!")
+		app.file_logger.stop()
+		app.file_logger.Wait()
 	}()
 
 	var sgn = make( chan os.Signal )
@@ -66,7 +68,6 @@ func main() {
 		select {
 		case <-sgn:
 			app.stdout_logger.wr( LLEV_WRN, "Catched QUIT signal from kernel! Stopping prg...")
-			app.Socket.Close()
 			return
 		}
 	}

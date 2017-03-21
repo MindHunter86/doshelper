@@ -28,6 +28,7 @@ func newApp() ( *App, bool ) {
 		log.Println(e.Error())
 		return nil,false
 	}
+	fl.start()
 	app := &App{
 		clients: &activeClients{},
 		Socket: sl,
@@ -51,13 +52,11 @@ func ( a *App ) ThreadHTTPD() {
 	hr.Handle( "/", hr.middleUserManage(webRootPage) )
 	hr.NotFoundHandler = webNotFoundPage
 
-
 // 	logFile, _ := os.OpenFile("server.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 // 	r := NewHTTPRouter(l)
 // 	finalHandler := http.HandlerFunc( r.WebRoot )
 // 	r.Router.Handle( "/", handlers.LoggingHandler( logFile, finalHandler ) )
 // 	r.Router.NotFoundHandler = finalHandler
-
 
 	l.wr( LLEV_INF, "Starting HTTP serving ...")
 	for i := uint8(0); i < uint8(4); i++ {

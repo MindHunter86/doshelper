@@ -74,8 +74,8 @@ func ( l *Logger ) wr( lvl uint8, m string ) {
 
 
 type fileLogger struct {
-	*log.Logger
 	sync.WaitGroup
+	*log.Logger
 	mess_queue chan string
 	stop_handle chan bool
 }
@@ -83,16 +83,21 @@ type fileLogger struct {
 func ( fl *fileLogger ) start() {
 	go func() {
 		fl.Add(1)
+		defer fl.Done()
+		log.Println("Log worker has been started!")
 		for {
 			select{
-			case m := <- fl.mess_queue:
+			case m := <-fl.mess_queue:
 				fl.Println(m)
-			case <- fl.stop_handle:
-				fl.Println("Log worker has been stopped!")
+			case <-fl.stop_handle:
+				var buf_size uint8 = uint8( len(fl.mess_queue) )
+				for ; buf_size != 0; buf_size-- {
+					fl.Println(<-fl.mess_queue)
+				}
+				log.Println("Log worker has been stopped! Buf is empty")
 				return
 			}
 		}
-		fl.Done()
 	}()
 }
 func ( fl *fileLogger ) stop() {
