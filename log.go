@@ -53,7 +53,20 @@ func ( l *Logger ) getPrefix( colo bool ) string {
 }
 func ( l *Logger ) wr( lvl uint8, m string ) {
 // log to file
-	l.ch_message <- l.getPrefix(false) + m
+	switch lvl {
+	case LLEV_DBG:
+		l.ch_message <- l.getPrefix(false) + "DBG: " + m
+	case LLEV_INF:
+		l.ch_message <- l.getPrefix(false) + "INF: " + m
+	case LLEV_OK:
+		l.ch_message <- l.getPrefix(false) + "SUC: " + m
+	case LLEV_NON:
+		l.ch_message <- l.getPrefix(false) + "FAI: " + m
+	case LLEV_WRN:
+		l.ch_message <- l.getPrefix(false) + "WRN: " + m
+	case LLEV_ERR:
+		l.ch_message <- l.getPrefix(false) + "ERR: " + m
+	}
 
 // log to stdout
 	switch lvl {
