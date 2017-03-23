@@ -134,9 +134,9 @@ func newClient2( h *http.Header ) ( *client, []*http.Cookie, error ) {
 		hwk_c, e := cl.generateHwKey( proto, host ); if e != nil { return nil,nil,e }
 		cooks = append( cooks, hwk_c )
 	}
-	uid_c, e := cl.generateUid( proto, host ); if e != nil { return nil,nil,e }		// auto put in struct cl.uuid
+	uid_c, e := cl.generateUid( proto, host ); if e != nil { return nil,nil,e }		// auto data put in CLIENT struct cl.uuid
 	cooks = append( cooks, uid_c )
-	scl_c, e := cl.generateSecLink( mdsec, proto, host ); if e != nil { return nil,nil,e } // auto put in struct cl.sec_link
+	scl_c, e := cl.generateSecLink( mdsec, proto, host ); if e != nil { return nil,nil,e } // auto data put in CLIENT struct cl.sec_link
 	cooks = append( cooks, scl_c )
 
 	if len( h.Get("X-Client-UUID") ) == 0 && len( h.Get("X-Client-SecureLink") ) == 0 {
