@@ -3,13 +3,14 @@ package main
 import "os"
 import "sync"
 import "net/http"
+import "net/http/pprof"
 import "log"
 
 import "github.com/gorilla/mux"
 //	Use CORS from here???
 //	import "github.com/gorilla/handlers"
 
-var app *App
+var application *App
 type App struct {
 	sync.WaitGroup
 	clients *activeClients
@@ -23,22 +24,22 @@ func newApp() ( *App, bool ) {
 		log.Println(e.Error())
 		return nil,false
 	}
-
-	fl, e := app.newFileLogger( appLogPath, appLogBuf ); if e != nil {
-		log.Println(e.Error())
-		return nil,false
-	}
-	fl.start()
 	app := &App{
 		clients: &activeClients{},
 		Socket: sl,
-		file_logger: fl,
 	}
+	if app.newFileLogger( appLogPath, appLogBuf ) != nil {
+		log.Println(e.Error())
+		return nil,false
+	}
+	app.file_logger.start()
+	app.clients.init()
 	app.stdout_logger = app.newLogger(LPFX_CORE)
 	return app,true
 }
 func ( a *App ) Destroy() {
 	a.Socket.Close()
+	a.clients.destroy()
 }
 func ( a *App ) ThreadHTTPD() {
 	a.Add(1)
@@ -51,6 +52,12 @@ func ( a *App ) ThreadHTTPD() {
 
 	hr.Handle( "/", hr.middleUserManage(webRootPage) )
 	hr.NotFoundHandler = webNotFoundPage
+
+	hr.HandleFunc( "/debug/pprof/", pprof.Index )
+	hr.HandleFunc( "/debug/pprof/cmdline", pprof.Cmdline )
+	hr.HandleFunc( "/debug/pprof/profile", pprof.Profile )
+	hr.HandleFunc( "/debug/pprof/symbol", pprof.Symbol )
+	hr.HandleFunc( "/debug/pprof/trace", pprof.Trace )
 
 // 	logFile, _ := os.OpenFile("server.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 // 	r := NewHTTPRouter(l)
@@ -85,15 +92,16 @@ func ( a *App ) newLogger( prefix uint8 ) *Logger {
 	}
 }
 
-func ( a *App ) newFileLogger( fpath string, logbuf int ) ( *fileLogger, error ) {
+func ( a *App ) newFileLogger( fpath string, logbuf int ) ( error ) {
 	fd, e := os.OpenFile( fpath, os.O_CREATE | os.O_APPEND | os.O_RDWR, 0600 )
-	if e != nil { return nil,e }
+	if e != nil { return e }
 
-	return &fileLogger{
+	a.file_logger = &fileLogger{
 		Logger: log.New( fd, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
 		mess_queue: make( chan string, logbuf ),
 		stop_handle: make( chan bool ),
-	},nil
+	}
+	return nil
 }
 
 

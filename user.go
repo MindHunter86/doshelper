@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log" // only for debuging
 	"sync"
 	"bytes"
 	"errors"
@@ -31,13 +32,22 @@ type activeClients struct {
 	sync.RWMutex
 	clients map[string]client
 }
+func ( ac *activeClients ) init() {
+	log.Println("CACHE INIT")
+	ac.RLock()
+	if ac.clients != nil { return }
+	ac.clients = make(map[string]client)
+	ac.RUnlock()
+}
 func ( ac *activeClients ) get( hwk string ) ( *client, bool ) {
+	log.Println("GET FROM HASH")
 	ac.RLock()
 	cl, ok := ac.clients[hwk]
 	ac.RUnlock()
 	return &cl, ok
 }
 func ( ac *activeClients ) validate( hwk string ) bool {
+	log.Println("USER VALIDATE IN HASH")
 	ac.RLock()
 	_, ok := ac.clients[hwk]
 	ac.RUnlock()
@@ -48,7 +58,9 @@ func ( ac *activeClients ) put( hwk string, cl client ) {
 	ac.clients[hwk] = cl
 	ac.Unlock()
 }
-
+func ( ac *activeClients ) destroy() {
+	for i := range ac.clients { delete(ac.clients, i) }
+}
 
 // type sqlClient struct {
 // 	conn *sql.DB
@@ -91,12 +103,6 @@ func ( ac *activeClients ) put( hwk string, cl client ) {
 //	defer in handler - update in db ???
 
 
-func userCreate() {}
-// Create with received values in cache then in db
-// or get from DB & compare with received values. Making updates in cache in db
-func userUpdate() {}
-// Rewrite user in cache, update in db
-
 /*
 	proxy_set_header X-Real-IP $remote_addr;
 	proxy_set_header X-Forwarded-Host $host;
@@ -115,29 +121,29 @@ type client struct {
 	addr, user_agent, origin, referer string
 }
 func newClient2( h *http.Header ) ( *client, []*http.Cookie, error ) {
-	var cl *client
+	var cl *client // = &client{}
 	hwk_h := h.Get("X-Client-HWID")
 
 // Cache & DB validation:
+
+
+
+// USE SWITCH CASE WITH 2 IFs!!
+	cl = &client{
+		addr: h.Get("X-Real-IP"),
+		user_agent: h.Get("User-Agent"),
+		origin: h.Get("Origin"),
+		referer: h.Get("Referer"),
+	}
+
 	if len(hwk_h) != 0 {
-		var ok bool = false
-		if cl, ok = app.clients.get(hwk_h); !ok { cl = &client{}; hwk_h = "" }
+		switch t1, ok := application.clients.get(hwk_h); ok {
+		case true:
+			cl = t1
+		case false:
+			hwk_h = ""
+		}
 	}
-
-	var hwk_c *http.Cookie
-	var cooks []*http.Cookie
-	var host string = h.Get("X-Forwarded-Host")
-	var proto string = h.Get("X-Forwarded-Proto")
-	var mdsec string = h.Get("X-SecureLink-Secret")
-
-	if app.clients.validate(hwk_h) == false {
-		hwk_c, e := cl.generateHwKey( proto, host ); if e != nil { return nil,nil,e }
-		cooks = append( cooks, hwk_c )
-	}
-	uid_c, e := cl.generateUid( proto, host ); if e != nil { return nil,nil,e }		// auto data put in CLIENT struct cl.uuid
-	cooks = append( cooks, uid_c )
-	scl_c, e := cl.generateSecLink( mdsec, proto, host ); if e != nil { return nil,nil,e } // auto data put in CLIENT struct cl.sec_link
-	cooks = append( cooks, scl_c )
 
 	if len( h.Get("X-Client-UUID") ) == 0 && len( h.Get("X-Client-SecureLink") ) == 0 {
 		cl.addr = h.Get("X-Real-IP")
@@ -146,7 +152,22 @@ func newClient2( h *http.Header ) ( *client, []*http.Cookie, error ) {
 		cl.referer = h.Get("Referer")
 	}
 
-	app.clients.put( hwk_c.Value, *cl )
+	var cooks []*http.Cookie
+	var host string = h.Get("X-Forwarded-Host")
+	var proto string = h.Get("X-Forwarded-Proto")
+	var mdsec string = h.Get("X-SecureLink-Secret")
+
+	if application.clients.validate(hwk_h) == false {
+		hwk_c, e := cl.generateHwKey( proto, host ); if e != nil { return nil,nil,e }
+		hwk_h = hwk_c.Value
+		cooks = append( cooks, hwk_c )
+	}
+	uid_c, e := cl.generateUid( proto, host ); if e != nil { return nil,nil,e }		// auto data put in CLIENT struct cl.uuid
+	cooks = append( cooks, uid_c )
+	scl_c, e := cl.generateSecLink( mdsec, proto, host ); if e != nil { return nil,nil,e } // auto data put in CLIENT struct cl.sec_link
+	cooks = append( cooks, scl_c )
+
+	application.clients.put( hwk_h, *cl )
 	return cl,cooks,nil
 }
 func newClient( h *http.Header ) ( *client, *http.Cookie, error ) {
@@ -174,6 +195,7 @@ func ( cl *client ) generateUid( scheme, host string ) ( *http.Cookie, error ) {
 	var https bool = false
 	if scheme == "https" { https = true }
 	cl.uuid = gouuid.NewV4().String()
+	log.Println("Generated UID")
 
 	return &http.Cookie{
 		Name: "uuid",
@@ -194,7 +216,6 @@ func ( cl *client ) getHwKey( hwk, scheme, host string ) ( *http.Cookie, string,
 	}
 }
 func ( cl *client ) generateHwKey( scheme, host string ) ( *http.Cookie, error ) {
-	if len(cl.uuid) == 0 { return nil,ERR_USER_NOUUID }
 	if len(scheme) == 0 || len(host) == 0 {
 		return nil,ERR_MAIN_NOPARAM
 	}
@@ -209,6 +230,8 @@ func ( cl *client ) generateHwKey( scheme, host string ) ( *http.Cookie, error )
 
 	var https bool = false
 	if scheme == "https" { https = true }
+
+	log.Println("Generated HWID")
 
 	return &http.Cookie{
 		Name: "hwid",
@@ -235,6 +258,8 @@ func ( cl *client ) generateSecLink( secret, scheme, host string ) ( *http.Cooki
 
 	var https bool = false
 	if scheme == "https" { https = true }
+
+	log.Println("Generated SECLINK")
 
 	return &http.Cookie{
 		Name: "sl",

@@ -45,6 +45,7 @@ func main() {
 	app, ok := newApp(); if !ok {
 		os.Exit(1)
 	}
+	application = app
 	app.stdout_logger.wr( LLEV_OK, "CORE log system has been inited!")
 	app.stdout_logger.wr( LLEV_OK, "Application started!")
 
@@ -82,34 +83,55 @@ type httpRouter struct {
 }
 func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
-
-		cl, uid_c, e := newClient(&r.Header); if e != nil {
-			hr.lgUserManage.wr( LLEV_WRN, e.Error())
+		_, cooks, e := newClient2(&r.Header); if e != nil {
+			hr.lgUserManage.wr( LLEV_WRN, e.Error() )
 			http.Error( w, ERR_MDL_USERFAIL, http.StatusInternalServerError )
 			return
-		} else if uid_c != nil { http.SetCookie(  w, uid_c ) }
-
-		var proto,host string
-		proto = r.Header.Get("X-Forwarded-Proto")
-		host = r.Header.Get("X-Forwarded-Host")
-
-		hwk_c, hwk, e := cl.getHwKey( r.Header.Get("X-Client-HWID"), proto, host ); if e != nil {
-			hr.lgUserManage.wr( LLEV_WRN, "CL_" + cl.uuid + ": genHW error: " + e.Error() )
-			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
-			return
-		} else if hwk_c != nil { http.SetCookie( w, hwk_c ) }
-
-		sl_c, e := cl.generateSecLink( r.Header.Get("X-SecureLink-Secret"), proto, host ); if e != nil {
-			hr.lgUserManage.wr( LLEV_WRN, "CL_" + cl.uuid + ": genSL error: " + e.Error() )
-			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
-			return
-		} else { http.SetCookie( w, sl_c ) }
-
-		hr.lgUserManage.wr( LLEV_INF, hwk)
-
+		}
+		for _, ck := range cooks {
+			hr.lgUserManage.wr( LLEV_DBG, ck.String() )
+			http.SetCookie(w,ck)
+		}
+		hr.lgUserManage.wr( LLEV_DBG, "BUF DEBUG:" )
+		for key, val := range application.clients.clients {
+			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.uuid )
+			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.sec_link )
+			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.addr )
+			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.origin  )
+		}
 		next.ServeHTTP(w,r)
 	})
 }
+//func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
+//	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
+//
+//		cl, uid_c, e := newClient(&r.Header); if e != nil {
+//			hr.lgUserManage.wr( LLEV_WRN, e.Error())
+//			http.Error( w, ERR_MDL_USERFAIL, http.StatusInternalServerError )
+//			return
+//		} else if uid_c != nil { http.SetCookie(  w, uid_c ) }
+//
+//		var proto,host string
+//		proto = r.Header.Get("X-Forwarded-Proto")
+//		host = r.Header.Get("X-Forwarded-Host")
+//
+//		hwk_c, hwk, e := cl.getHwKey( r.Header.Get("X-Client-HWID"), proto, host ); if e != nil {
+//			hr.lgUserManage.wr( LLEV_WRN, "CL_" + cl.uuid + ": genHW error: " + e.Error() )
+//			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
+//			return
+//		} else if hwk_c != nil { http.SetCookie( w, hwk_c ) }
+//
+//		sl_c, e := cl.generateSecLink( r.Header.Get("X-SecureLink-Secret"), proto, host ); if e != nil {
+//			hr.lgUserManage.wr( LLEV_WRN, "CL_" + cl.uuid + ": genSL error: " + e.Error() )
+//			http.Error( w, ERR_MDL_HASHFAIL, http.StatusInternalServerError )
+//			return
+//		} else { http.SetCookie( w, sl_c ) }
+//
+//		hr.lgUserManage.wr( LLEV_INF, hwk)
+//
+//		next.ServeHTTP(w,r)
+//	})
+//}
 func ( hr *httpRouter ) webRoot( w http.ResponseWriter, r *http.Request ) {
 	hr.lgRoot.wr( LLEV_INF, "WebRoot")
 
