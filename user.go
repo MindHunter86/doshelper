@@ -130,6 +130,7 @@ func newClient2( h *http.Header ) ( *client, []*http.Cookie, error ) {
 
 // USE SWITCH CASE WITH 2 IFs!!
 	cl = &client{
+//		"","",
 		addr: h.Get("X-Real-IP"),
 		user_agent: h.Get("User-Agent"),
 		origin: h.Get("Origin"),
@@ -162,40 +163,24 @@ func newClient2( h *http.Header ) ( *client, []*http.Cookie, error ) {
 		hwk_h = hwk_c.Value
 		cooks = append( cooks, hwk_c )
 	}
-	uid_c, e := cl.generateUid( proto, host ); if e != nil { return nil,nil,e }		// auto data put in CLIENT struct cl.uuid
+	uid_c, e := cl.generateUid( cl.uuid, proto, host ); if e != nil { return nil,nil,e }		// auto data put in CLIENT struct cl.uuid
 	cooks = append( cooks, uid_c )
-	scl_c, e := cl.generateSecLink( mdsec, proto, host ); if e != nil { return nil,nil,e } // auto data put in CLIENT struct cl.sec_link
+	scl_c, e := cl.generateSecLink( cl.sec_link, mdsec, proto, host ); if e != nil { return nil,nil,e } // auto data put in CLIENT struct cl.sec_link
 	cooks = append( cooks, scl_c )
 
 	application.clients.put( hwk_h, *cl )
 	return cl,cooks,nil
 }
-func newClient( h *http.Header ) ( *client, *http.Cookie, error ) {
-	cl := &client{
-		sec_link: h.Get("X-Client-SecureLink"),
-		addr: h.Get("X-Real-IP"),
-		user_agent: h.Get("User-Agent"),
-		origin: h.Get("Origin"),
-		referer: h.Get("Referer"),
-	}
-
-	cl.uuid = h.Get("X-Client-UUID")
-	switch len(cl.uuid) {
-	case 0:
-		if uid_c, e := cl.generateUid( h.Get("X-Forwarded-Proto"), h.Get("X-Forwarded-Host") ); e != nil {
-			return nil,nil,e
-		} else { return cl, uid_c, nil }
-	default:
-		return cl, nil, nil
-	}
-}
-func ( cl *client ) generateUid( scheme, host string ) ( *http.Cookie, error ) {
+func ( cl *client ) generateUid( uid, scheme, host string ) ( *http.Cookie, error ) {
 	if len(scheme) == 0 || len(host) == 0 { return nil,ERR_MAIN_NOPARAM }
 
 	var https bool = false
 	if scheme == "https" { https = true }
-	cl.uuid = gouuid.NewV4().String()
-	log.Println("Generated UID")
+
+	if len(uid) == 0 {
+		cl.uuid = gouuid.NewV4().String()
+		log.Println("Generated UID")
+	}
 
 	return &http.Cookie{
 		Name: "uuid",
@@ -242,24 +227,26 @@ func ( cl *client ) generateHwKey( scheme, host string ) ( *http.Cookie, error )
 		HttpOnly: true,
 	}, nil
 }
-func ( cl *client ) generateSecLink( secret, scheme, host string ) ( *http.Cookie, error ) {
+func ( cl *client ) generateSecLink( sl, secret, scheme, host string ) ( *http.Cookie, error ) {
 	if len(cl.uuid) == 0 { return nil,ERR_USER_NOUUID }
 	if len(secret) == 0 || len(scheme) == 0 || len(host) == 0 {
 		return nil,ERR_MAIN_NOPARAM
 	}
 
-	var buf bytes.Buffer
-	buf.WriteString( cl.addr + cl.uuid + cl.user_agent + secret )
-
-	t1 := md5.Sum( buf.Bytes() )
-	t2 := base64.StdEncoding.EncodeToString( t1[:] )
-	t3 := strings.Replace( strings.Replace( t2, "+", "-", -1 ), "/", "_", -1 )
-	cl.sec_link = strings.Replace( t3, "=", "", -1 )
-
 	var https bool = false
 	if scheme == "https" { https = true }
 
-	log.Println("Generated SECLINK")
+	if len(sl) == 0 {
+		var buf bytes.Buffer
+		buf.WriteString( cl.addr + cl.uuid + cl.user_agent + secret )
+
+		t1 := md5.Sum( buf.Bytes() )
+		t2 := base64.StdEncoding.EncodeToString( t1[:] )
+		t3 := strings.Replace( strings.Replace( t2, "+", "-", -1 ), "/", "_", -1 )
+		cl.sec_link = strings.Replace( t3, "=", "", -1 )
+
+		log.Println("Generated SECLINK")
+	}
 
 	return &http.Cookie{
 		Name: "sl",
