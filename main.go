@@ -83,7 +83,7 @@ type httpRouter struct {
 }
 func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
-		_, cooks, e := newClient2(&r.Header); if e != nil {
+		_, cooks, e := newClient(&r.Header); if e != nil {
 			hr.lgUserManage.wr( LLEV_WRN, e.Error() )
 			http.Error( w, ERR_MDL_USERFAIL, http.StatusInternalServerError )
 			return

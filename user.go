@@ -120,7 +120,7 @@ type client struct {
 	uuid, sec_link string
 	addr, user_agent, origin, referer string
 }
-func newClient2( h *http.Header ) ( *client, []*http.Cookie, error ) {
+func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 	var cl *client // = &client{}
 	hwk_h := h.Get("X-Client-HWID")
 
