@@ -54,44 +54,36 @@ const (
 // mysql relations http://stackoverflow.com/questions/260441/how-to-create-relationships-in-mysql
 // siege performance testing
 
+// DONE:
+// + removing using local app vars (Now, we have application variable for it);
+
 // TODO:
-// - remove log defines (Now we have helper function for it);
+// ? remove log defines (Now we have helper function for it);
 // - adding sql support for writing buffer values;
 // - rewriting log prefix (It's hard to read current logfile);
 // - adding writing hw key in "banned" messages (for future logfile grep);
 // - replace current http methods in Interface;
 // - remove mux import (We have only one route);
 // - adding P2P supporting for buffer synchronization between running apps;
-// - removing using local app vars (Now, we have application variable for it);
+// - removing global defining in structs;
+// - remove data races;
 
 
 func main() {
-	app, ok := newApp(); if !ok {
-		os.Exit(1)
-	}
-	application = app
-	app.stdout_logger.wr( LLEV_OK, "Application started!")
-
-	defer func() {
-		app.stdout_logger.wr( LLEV_INF, "Reached app destroy function")
-		app.Destroy()
-		app.stdout_logger.wr( LLEV_INF, "Reached app wair function")
-		app.Wait()
-		app.stdout_logger.wr( LLEV_OK, "App has been destroyed!")
-		app.file_logger.stop()
-		app.file_logger.Wait()
-	}()
+	newApp()
+	defer func() { application.destroy(); application.Wait() }()
 
 	var sgn = make( chan os.Signal )
 	signal.Notify( sgn, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT )
-	app.stdout_logger.wr( LLEV_OK, "Kernel signal catcher has been initialized!")
+	application.slogger.w( LLEV_OK, "Kernel signal catcher has been initialized!")
 
-	go app.ThreadHTTPD()
+	go application.threadHTTPD()
+	application.slogger.w(LLEV_OK, "Application started!")
 
 	for {
 		select {
 		case <-sgn:
-			app.stdout_logger.wr( LLEV_ERR, "Catched QUIT signal from kernel! Stopping prg...")
+			application.slogger.w( LLEV_ERR, "Catched QUIT signal from kernel! Stopping prg...")
 			return
 		}
 	}
@@ -107,21 +99,18 @@ type httpRouter struct {
 func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
 		_, cooks, e := newClient(&r.Header); if e != nil {
-			hr.lgUserManage.wr( LLEV_WRN, e.Error() )
+			hr.lgUserManage.w( LLEV_WRN, e.Error() )
 			http.Error( w, ERR_MDL_USERFAIL, http.StatusInternalServerError )
 			return
 		}
 		for _, ck := range cooks {
-			hr.lgUserManage.wr( LLEV_DBG, ck.String() )
+			hr.lgUserManage.w( LLEV_DBG, ck.String() )
 			http.SetCookie(w,ck)
 		}
 		next.ServeHTTP(w,r)
 	})
 }
-func ( hr *httpRouter ) webRoot( w http.ResponseWriter, r *http.Request ) {
-	hr.lgRoot.wr( LLEV_INF, "WebRoot")
-
-}
+func ( hr *httpRouter ) webRoot( w http.ResponseWriter, r *http.Request ) {}
 func ( hr *httpRouter ) webNotFound( w http.ResponseWriter, r *http.Request ) {
-	w.Write( []byte("Sorry, but page was killed!") )
+	w.Write( []byte("Sorry, but this page has been killed!") )
 }

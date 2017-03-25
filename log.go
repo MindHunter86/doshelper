@@ -1,6 +1,4 @@
 package main
-
-
 import (
 	"log"
 	"sync"
@@ -51,7 +49,7 @@ func ( l *Logger ) getPrefix( colo bool ) string {
 		return ""
 	}
 }
-func ( l *Logger ) wr( lvl uint8, m string ) {
+func ( l *Logger ) w( lvl uint8, m string ) {
 // log to file
 	switch lvl {
 	case LLEV_DBG:
@@ -98,6 +96,7 @@ func ( fl *fileLogger ) start() {
 		fl.Add(1)
 		defer fl.Done()
 		log.Println("Log worker has been started!")
+
 		for {
 			select{
 			case m := <-fl.mess_queue:
@@ -114,6 +113,5 @@ func ( fl *fileLogger ) start() {
 	}()
 }
 func ( fl *fileLogger ) stop() {
-	fl.Println("Trying to close File Logger...")
 	close(fl.stop_handle)
 }

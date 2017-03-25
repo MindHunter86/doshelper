@@ -10,41 +10,36 @@ import "github.com/gorilla/mux"
 //	Use CORS from here???
 //	import "github.com/gorilla/handlers"
 
-var application *App
-type App struct {
+var application *app
+type app struct {
 	sync.WaitGroup
 	clients *activeClients
-	Socket *SockListener
-	file_logger *fileLogger
-	stdout_logger *Logger
+	socket *SockListener
+	flogger *fileLogger
+	slogger *Logger
 }
 
-func newApp() ( *App, bool ) {
-	sl, e := NewSockListener( appNetProto, appNetPath ); if e != nil {
-		log.Println(e.Error())
-		return nil,false
-	}
-	app := &App{
-		clients: &activeClients{},
-		Socket: sl,
-	}
-	if app.newFileLogger( appLogPath, appLogBuf ) != nil {
-		log.Println(e.Error())
-		return nil,false
-	}
-	app.file_logger.start()
-	app.clients.init()
-	app.stdout_logger = app.newLogger(LPFX_CORE)
-	return app,true
+func newApp() {
+	var e error
+	application = &app{ clients: &activeClients{} }
+
+	if e = application.newFileLogger( appLogPath, appLogBuf ); e != nil { log.Fatalln(e); return }
+	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln(e); return }
+
+	application.slogger = application.newLogger(LPFX_CORE)
+	application.flogger.start()
+	application.clients.init()
 }
-func ( a *App ) Destroy() {
-	a.Socket.Close()
-	a.clients.destroy()
+func ( a *app ) destroy() {
+	a.socket.Close() // close all sockets, break http listen
+	a.clients.destroy() // clean clients buffer, writing all data in SQL (in future)
+	a.flogger.stop() // stop file logger goroutine and wait it's closing
+	a.flogger.Wait()
 }
-func ( a *App ) ThreadHTTPD() {
+func ( a *app ) threadHTTPD() {
 	a.Add(1)
 	l := a.newLogger(LPFX_HTTPD)
-	l.wr( LLEV_OK, "HTTPD goroutine has been inited!")
+	l.w( LLEV_OK, "HTTPD goroutine has been inited!")
 
 	hr := a.newHttpRouter()
 	webRootPage := http.HandlerFunc(hr.webRoot)
@@ -53,59 +48,50 @@ func ( a *App ) ThreadHTTPD() {
 	hr.Handle( "/", hr.middleUserManage(webRootPage) )
 	hr.NotFoundHandler = webNotFoundPage
 
+	// GO TOOL PPROF DEBUGGING:
 	hr.HandleFunc( "/debug/pprof/", pprof.Index )
 	hr.HandleFunc( "/debug/pprof/cmdline", pprof.Cmdline )
 	hr.HandleFunc( "/debug/pprof/profile", pprof.Profile )
 	hr.HandleFunc( "/debug/pprof/symbol", pprof.Symbol )
 	hr.HandleFunc( "/debug/pprof/trace", pprof.Trace )
 
-// 	logFile, _ := os.OpenFile("server.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-// 	r := NewHTTPRouter(l)
-// 	finalHandler := http.HandlerFunc( r.WebRoot )
-// 	r.Router.Handle( "/", handlers.LoggingHandler( logFile, finalHandler ) )
-// 	r.Router.NotFoundHandler = finalHandler
-
-	l.wr( LLEV_INF, "Starting HTTP serving ...")
+	l.w( LLEV_INF, "Starting HTTP serving ...")
 	for i := uint8(0); i < uint8(4); i++ {
-		if e := a.Socket.HTTPServe( hr.Router ); e != nil {
-			l.wr( LLEV_WRN, "Pre-fail state! HTTPServe error: " + e.Error())
-			l.wr( LLEV_INF, "Trying to restart HTTPServing ...")
+		if e := a.socket.HTTPServe( hr.Router ); e != nil {
+			l.w( LLEV_WRN, "Pre-fail state! HTTPServe error: " + e.Error())
+			l.w( LLEV_INF, "Trying to restart HTTPServing ...")
 			continue;
 		}
-		l.wr( LLEV_OK, "HTTP serving has been stopped!")
+		l.w( LLEV_OK, "HTTP serving has been stopped!")
 		break;
 	}
 
-	l.wr( LLEV_OK, "HTTPD goroutine has been destroyed!")
+	l.w( LLEV_OK, "HTTPD goroutine has been destroyed!")
 	a.Done()
 }
-
-func final(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("2345678"))
-}
-
-func ( a *App ) newLogger( prefix uint8 ) *Logger {
+// 2DELETE
+//func final(w http.ResponseWriter, r *http.Request) {
+//	w.Write([]byte("2345678"))
+//}
+func ( a *app ) newLogger( prefix uint8 ) *Logger {
 	return &Logger{
 		Logger: log.New( os.Stdout, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
-		ch_message: a.file_logger.mess_queue,
+		ch_message: a.flogger.mess_queue,
 		prefix: prefix,
 	}
 }
-
-func ( a *App ) newFileLogger( fpath string, logbuf int ) ( error ) {
+func ( a *app ) newFileLogger( fpath string, logbuf int ) ( error ) {
 	fd, e := os.OpenFile( fpath, os.O_CREATE | os.O_APPEND | os.O_RDWR, 0600 )
 	if e != nil { return e }
 
-	a.file_logger = &fileLogger{
+	a.flogger = &fileLogger{
 		Logger: log.New( fd, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
 		mess_queue: make( chan string, logbuf ),
 		stop_handle: make( chan bool ),
 	}
 	return nil
 }
-
-
-func ( a *App ) newHttpRouter() *httpRouter {
+func ( a *app ) newHttpRouter() *httpRouter {
 	return &httpRouter{
 		Router: mux.NewRouter(),
 		lgRoot: a.newLogger(LPFX_WEBROOT),

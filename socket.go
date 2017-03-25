@@ -15,7 +15,7 @@ type SockListener struct {
 	alive bool
 }
 
-func NewSockListener( proto, path string ) ( *SockListener, error ) {
+func newSockListener( proto, path string ) ( *SockListener, error ) {
 	s, e := net.Listen( proto, path ); if e != nil {
 		return nil,e
 	}
