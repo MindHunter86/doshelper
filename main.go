@@ -25,6 +25,7 @@ var (
 	ERR_MAIN_NOPARAM = errors.New("Received empty params! Function ferror!")
 	ERR_DDOS_REJECTED = errors.New("Too many requests from unique client! User has been banned!")
 	ERR_DDOS_BANNED = errors.New("Client is banned! Try again later.")
+	ERR_SOCK_DEAD = errors.New("Current listener is dead!")
 )
 
 
@@ -68,6 +69,7 @@ const (
 // - adding P2P supporting for buffer synchronization between running apps;
 // - removing global defining in structs;
 // - check & remove data races (regularly);
+// - adding full app restarting with saving sockets for application deploy;
 
 
 func main() {

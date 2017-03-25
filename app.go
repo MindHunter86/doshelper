@@ -14,7 +14,7 @@ var application *app
 type app struct {
 	sync.WaitGroup
 	clients *activeClients
-	socket *SockListener
+	socket *sockListener
 	flogger *fileLogger
 	slogger *Logger
 }
@@ -31,7 +31,7 @@ func newApp() {
 	application.clients.init()
 }
 func ( a *app ) destroy() {
-	a.socket.Close() // close all sockets, break http listen
+	a.socket.stop() // close all sockets, break http listen
 	a.clients.destroy() // clean clients buffer, writing all data in SQL (in future)
 	a.flogger.stop() // stop file logger goroutine and wait it's closing
 	a.flogger.Wait()
@@ -57,7 +57,7 @@ func ( a *app ) threadHTTPD() {
 
 	l.w( LLEV_INF, "Starting HTTP serving ...")
 	for i := uint8(0); i < uint8(4); i++ {
-		if e := a.socket.HTTPServe( hr.Router ); e != nil {
+		if e := a.socket.serveHTTP( hr.Router ); e != nil {
 			l.w( LLEV_WRN, "Pre-fail state! HTTPServe error: " + e.Error())
 			l.w( LLEV_INF, "Trying to restart HTTPServing ...")
 			continue;
