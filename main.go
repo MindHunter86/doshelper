@@ -58,6 +58,7 @@ const (
 // DONE:
 // + removing using local app vars (Now, we have application variable for it);
 // + remove data races ( 2xDataRaces in Socket Alive & client buf destroy - 25-Mar-17);
+// + removing global defining in structs;
 
 // TODO:
 // ? remove log defines (Now we have helper function for it);
@@ -67,7 +68,6 @@ const (
 // - replace current http methods in Interface;
 // - remove mux import (We have only one route);
 // - adding P2P supporting for buffer synchronization between running apps;
-// - removing global defining in structs;
 // - check & remove data races (regularly);
 // - adding full app restarting with saving sockets for application deploy;
 
@@ -95,9 +95,9 @@ func main() {
 
 type httpRouter struct {
 	*mux.Router
-	lgRoot *Logger
-	lgNotfound *Logger
-	lgUserManage *Logger
+	lgRoot *logger
+	lgNotfound *logger
+	lgUserManage *logger
 }
 func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {

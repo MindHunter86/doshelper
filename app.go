@@ -16,7 +16,7 @@ type app struct {
 	clients *activeClients
 	socket *sockListener
 	flogger *fileLogger
-	slogger *Logger
+	slogger *logger
 }
 
 func newApp() {
@@ -73,8 +73,8 @@ func ( a *app ) threadHTTPD() {
 //func final(w http.ResponseWriter, r *http.Request) {
 //	w.Write([]byte("2345678"))
 //}
-func ( a *app ) newLogger( prefix uint8 ) *Logger {
-	return &Logger{
+func ( a *app ) newLogger( prefix uint8 ) *logger {
+	return &logger{
 		Logger: log.New( os.Stdout, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
 		ch_message: a.flogger.mess_queue,
 		prefix: prefix,

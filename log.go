@@ -21,7 +21,7 @@ const (
 	LLEV_ERR
 )
 
-type Logger struct {
+type logger struct {
 	*log.Logger
 	ch_message chan string
 	sync.RWMutex
@@ -29,10 +29,10 @@ type Logger struct {
 }
 
 
-func ( l *Logger ) SetPrefix( p uint8 ) {
+func ( l *logger ) setPrefix( p uint8 ) {
 	l.Lock(); l.prefix = p; l.Unlock()
 }
-func ( l *Logger ) getPrefix( colo bool ) string {
+func ( l *logger ) getPrefix( colo bool ) string {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -49,7 +49,7 @@ func ( l *Logger ) getPrefix( colo bool ) string {
 		return ""
 	}
 }
-func ( l *Logger ) w( lvl uint8, m string ) {
+func ( l *logger ) w( lvl uint8, m string ) {
 // log to file
 	switch lvl {
 	case LLEV_DBG:
