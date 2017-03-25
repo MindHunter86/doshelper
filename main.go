@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"net/http"
 
 	"os"
@@ -21,6 +22,7 @@ const (
 	appNetPath string = "./doshelpv2.sock"
 	appLogPath string = "./doshelpv2.log"
 	appLogBuf int = 128
+	appDosBanTime time.Duration = 60*time.Second // in seconds
 )
 
 
@@ -98,6 +100,7 @@ func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.sec_link )
 			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.addr )
 			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.origin  )
+			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.request_time.String()  )
 		}
 		next.ServeHTTP(w,r)
 	})

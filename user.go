@@ -3,6 +3,7 @@ package main
 import (
 	"log" // only for debuging
 	"sync"
+	"time"
 	"bytes"
 	"errors"
 	"strings"
@@ -21,6 +22,8 @@ const (
 var (
 	ERR_USER_NOUUID = errors.New("User's UUID is empty! Logical error!")
 	ERR_MAIN_NOPARAM = errors.New("Received empty params! Function ferror!")
+	ERR_DDOS_REJECTED = errors.New("Too many requests from unique client! User has been banned!")
+	ERR_DDOS_BANNED = errors.New("Client is banned! Try again later.")
 )
 
 // User cacher ( Key/value "database" )
@@ -119,6 +122,10 @@ func ( ac *activeClients ) destroy() {
 type client struct {
 	uuid, sec_link string
 	addr, user_agent, origin, referer string
+	request_time time.Time
+	banned bool
+	ban_time time.Time
+	new bool
 }
 func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 	var cl *client // = &client{}
@@ -130,7 +137,6 @@ func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 
 // USE SWITCH CASE WITH 2 IFs!!
 	cl = &client{
-//		"","",
 		addr: h.Get("X-Real-IP"),
 		user_agent: h.Get("User-Agent"),
 		origin: h.Get("Origin"),
@@ -146,11 +152,14 @@ func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 		}
 	}
 
+
 	if len( h.Get("X-Client-UUID") ) == 0 && len( h.Get("X-Client-SecureLink") ) == 0 {
 		cl.addr = h.Get("X-Real-IP")
 		cl.user_agent = h.Get("User-Agent")
 		cl.origin = h.Get("Origin")
 		cl.referer = h.Get("Referer")
+		cl.new = true
+		cl.request_time = time.Now()
 	}
 
 	var cooks []*http.Cookie
@@ -161,6 +170,29 @@ func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 	if application.clients.validate(hwk_h) == false {
 		hwk_c, e := cl.generateHwKey( proto, host ); if e != nil { return nil,nil,e }
 		hwk_h = hwk_c.Value
+
+		if t1, ok := application.clients.get(hwk_h); ok { cl = t1 }
+		if cl.new == false {
+			if cl.banned == true {
+				if cl.ban_time.Before(time.Now()) == true {
+					log.Println("ok, ban disable")
+					cl.banned = false
+				} else { return nil,nil,ERR_DDOS_BANNED }
+			}
+
+			log.Println("RequestTime:", cl.request_time.String())
+			log.Println("RequestIF:", time.Now().Sub(cl.request_time).String())
+
+			if time.Now().Sub(cl.request_time) < 2*time.Second {
+				cl.banned = true
+				log.Println("BAN: ", time.Now().Add( appDosBanTime ).String())
+				cl.ban_time = time.Now().Add( appDosBanTime )
+				application.clients.put( hwk_h, *cl )
+				return nil,nil,ERR_DDOS_REJECTED
+			} else { cl.request_time = time.Now() }
+		}
+
+
 		cooks = append( cooks, hwk_c )
 	}
 	uid_c, e := cl.generateUid( cl.uuid, proto, host ); if e != nil { return nil,nil,e }		// auto data put in CLIENT struct cl.uuid
@@ -168,6 +200,7 @@ func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 	scl_c, e := cl.generateSecLink( cl.sec_link, mdsec, proto, host ); if e != nil { return nil,nil,e } // auto data put in CLIENT struct cl.sec_link
 	cooks = append( cooks, scl_c )
 
+	cl.new = false
 	application.clients.put( hwk_h, *cl )
 	return cl,cooks,nil
 }
