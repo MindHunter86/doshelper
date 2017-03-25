@@ -4,7 +4,6 @@ import (
 	"sync"
 	"time"
 	"bytes"
-	"errors"
 	"strings"
 
 	"net/http"
@@ -13,17 +12,6 @@ import (
 )
 import gouuid "github.com/satori/go.uuid"
 
-
-const (
-	ERR_USER_UUIDEMP = "User's UUID is empty! Logical error!"
-	ERR_USER_HWIDEMP = "User's HWID is empty! Logical error!"
-)
-var (
-	ERR_USER_NOUUID = errors.New("User's UUID is empty! Logical error!")
-	ERR_MAIN_NOPARAM = errors.New("Received empty params! Function ferror!")
-	ERR_DDOS_REJECTED = errors.New("Too many requests from unique client! User has been banned!")
-	ERR_DDOS_BANNED = errors.New("Client is banned! Try again later.")
-)
 
 // User cacher ( Key/value "database" )
 //
@@ -124,21 +112,20 @@ type client struct {
 	new bool
 }
 func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
-	var cl *client // = &client{}
-	hwk_h := h.Get("X-Client-HWID")
-
-// Cache & DB validation:
-
-
-
-// USE SWITCH CASE WITH 2 IFs!!
-	cl = &client{
+	var cooks []*http.Cookie
+	var host string = h.Get("X-Forwarded-Host")
+	var hwk_h string = h.Get("X-Client-HWID")
+	var proto string = h.Get("X-Forwarded-Proto")
+	var mdsec string = h.Get("X-SecureLink-Secret")
+	var cl *client = &client{
 		addr: h.Get("X-Real-IP"),
 		user_agent: h.Get("User-Agent"),
 		origin: h.Get("Origin"),
 		referer: h.Get("Referer"),
+		request_time: time.Now(),
 	}
 
+// Cache & DB validation:
 	if len(hwk_h) != 0 {
 		switch t1, ok := application.clients.get(hwk_h); ok {
 		case true:
@@ -148,41 +135,25 @@ func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 		}
 	}
 
-
-	if len( h.Get("X-Client-UUID") ) == 0 && len( h.Get("X-Client-SecureLink") ) == 0 {
-		cl.addr = h.Get("X-Real-IP")
-		cl.user_agent = h.Get("User-Agent")
-		cl.origin = h.Get("Origin")
-		cl.referer = h.Get("Referer")
-		cl.new = true
-		cl.request_time = time.Now()
-	}
-
-	var cooks []*http.Cookie
-	var host string = h.Get("X-Forwarded-Host")
-	var proto string = h.Get("X-Forwarded-Proto")
-	var mdsec string = h.Get("X-SecureLink-Secret")
-
 	if application.clients.validate(hwk_h) == false {
 		hwk_c, e := cl.generateHwKey( proto, host ); if e != nil { return nil,nil,e }
 		hwk_h = hwk_c.Value
 
-		if t1, ok := application.clients.get(hwk_h); ok { cl = t1 }
-		if cl.new == false {
+		if tmp1, ok := application.clients.get(hwk_h); ok {
+			cl = tmp1
 			if cl.banned == true {
 				if cl.ban_time.Before(time.Now()) == true {
 					cl.banned = false
 				} else { return nil,nil,ERR_DDOS_BANNED }
 			}
 
-			if time.Now().Sub(cl.request_time) < 2*time.Second {
+			if time.Now().Sub(cl.request_time) < appDosReqTime {
 				cl.banned = true
 				cl.ban_time = time.Now().Add( appDosBanTime )
 				application.clients.put( hwk_h, *cl )
 				return nil,nil,ERR_DDOS_REJECTED
 			} else { cl.request_time = time.Now() }
 		}
-
 
 		cooks = append( cooks, hwk_c )
 	}
@@ -191,7 +162,6 @@ func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 	scl_c, e := cl.generateSecLink( cl.sec_link, mdsec, proto, host ); if e != nil { return nil,nil,e } // auto data put in CLIENT struct cl.sec_link
 	cooks = append( cooks, scl_c )
 
-	cl.new = false
 	application.clients.put( hwk_h, *cl )
 	return cl,cooks,nil
 }
