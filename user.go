@@ -46,7 +46,11 @@ func ( ac *activeClients ) put( hwk string, cl client ) {
 	ac.Unlock()
 }
 func ( ac *activeClients ) destroy() {
-	for i := range ac.clients { delete(ac.clients, i) }
+	for i := range ac.clients {
+		ac.Lock()
+		delete(ac.clients, i)
+		ac.Unlock()
+	}
 }
 
 // type sqlClient struct {

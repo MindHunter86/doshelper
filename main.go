@@ -56,6 +56,7 @@ const (
 
 // DONE:
 // + removing using local app vars (Now, we have application variable for it);
+// + remove data races ( 2xDataRaces in Socket Alive & client buf destroy - 25-Mar-17);
 
 // TODO:
 // ? remove log defines (Now we have helper function for it);
@@ -66,7 +67,7 @@ const (
 // - remove mux import (We have only one route);
 // - adding P2P supporting for buffer synchronization between running apps;
 // - removing global defining in structs;
-// - remove data races;
+// - check & remove data races (regularly);
 
 
 func main() {
