@@ -62,6 +62,7 @@ const (
 // - replace current http methods in Interface;
 // - remove mux import (We have only one route);
 // - adding P2P supporting for buffer synchronization between running apps;
+// - removing using local app vars (Now, we have application variable for it);
 
 
 func main() {
@@ -69,7 +70,6 @@ func main() {
 		os.Exit(1)
 	}
 	application = app
-	app.stdout_logger.wr( LLEV_OK, "CORE log system has been inited!")
 	app.stdout_logger.wr( LLEV_OK, "Application started!")
 
 	defer func() {
