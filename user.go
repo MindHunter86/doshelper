@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log" // only for debuging
 	"sync"
 	"time"
 	"bytes"
@@ -36,21 +35,18 @@ type activeClients struct {
 	clients map[string]client
 }
 func ( ac *activeClients ) init() {
-	log.Println("CACHE INIT")
 	ac.RLock()
 	if ac.clients != nil { return }
 	ac.clients = make(map[string]client)
 	ac.RUnlock()
 }
 func ( ac *activeClients ) get( hwk string ) ( *client, bool ) {
-	log.Println("GET FROM HASH")
 	ac.RLock()
 	cl, ok := ac.clients[hwk]
 	ac.RUnlock()
 	return &cl, ok
 }
 func ( ac *activeClients ) validate( hwk string ) bool {
-	log.Println("USER VALIDATE IN HASH")
 	ac.RLock()
 	_, ok := ac.clients[hwk]
 	ac.RUnlock()
@@ -175,17 +171,12 @@ func newClient( h *http.Header ) ( *client, []*http.Cookie, error ) {
 		if cl.new == false {
 			if cl.banned == true {
 				if cl.ban_time.Before(time.Now()) == true {
-					log.Println("ok, ban disable")
 					cl.banned = false
 				} else { return nil,nil,ERR_DDOS_BANNED }
 			}
 
-			log.Println("RequestTime:", cl.request_time.String())
-			log.Println("RequestIF:", time.Now().Sub(cl.request_time).String())
-
 			if time.Now().Sub(cl.request_time) < 2*time.Second {
 				cl.banned = true
-				log.Println("BAN: ", time.Now().Add( appDosBanTime ).String())
 				cl.ban_time = time.Now().Add( appDosBanTime )
 				application.clients.put( hwk_h, *cl )
 				return nil,nil,ERR_DDOS_REJECTED
@@ -210,10 +201,7 @@ func ( cl *client ) generateUid( uid, scheme, host string ) ( *http.Cookie, erro
 	var https bool = false
 	if scheme == "https" { https = true }
 
-	if len(uid) == 0 {
-		cl.uuid = gouuid.NewV4().String()
-		log.Println("Generated UID")
-	}
+	if len(uid) == 0 { cl.uuid = gouuid.NewV4().String() }
 
 	return &http.Cookie{
 		Name: "uuid",
@@ -249,8 +237,6 @@ func ( cl *client ) generateHwKey( scheme, host string ) ( *http.Cookie, error )
 	var https bool = false
 	if scheme == "https" { https = true }
 
-	log.Println("Generated HWID")
-
 	return &http.Cookie{
 		Name: "hwid",
 		Value: t4,
@@ -277,8 +263,6 @@ func ( cl *client ) generateSecLink( sl, secret, scheme, host string ) ( *http.C
 		t2 := base64.StdEncoding.EncodeToString( t1[:] )
 		t3 := strings.Replace( strings.Replace( t2, "+", "-", -1 ), "/", "_", -1 )
 		cl.sec_link = strings.Replace( t3, "=", "", -1 )
-
-		log.Println("Generated SECLINK")
 	}
 
 	return &http.Cookie{

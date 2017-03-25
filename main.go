@@ -94,14 +94,6 @@ func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 			hr.lgUserManage.wr( LLEV_DBG, ck.String() )
 			http.SetCookie(w,ck)
 		}
-		hr.lgUserManage.wr( LLEV_DBG, "BUF DEBUG:" )
-		for key, val := range application.clients.clients {
-			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.uuid )
-			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.sec_link )
-			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.addr )
-			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.origin  )
-			hr.lgUserManage.wr( LLEV_DBG, string(key) + " " + val.request_time.String()  )
-		}
 		next.ServeHTTP(w,r)
 	})
 }
