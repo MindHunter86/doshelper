@@ -68,10 +68,15 @@ const (
 // - adding writing hw key in "banned" messages (for future logfile grep);
 // - replace current http methods in Interface;
 // - remove mux import (We have only one route);
-// - adding P2P supporting for buffer synchronization between running apps;
+// - adding P2P supporting for buffer synchronization between running apps (can be not only tox);
 // - adding full app restarting with saving sockets for application deploy;
-// - adding minimal log level reporting in application config
-
+// - adding minimal log level reporting in application config;
+// - added application customization over flags or configuration;
+// - replace net/http with fasthttp;
+// - replace default http router with fasthttp router;
+// - adding rpc connection support between server and client (golang and js);
+// - rename all strcut method's variables
+// - added steam openid support (long task);
 
 func main() {
 	newApp()
