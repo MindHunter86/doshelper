@@ -59,6 +59,7 @@ const (
 // + removing using local app vars (Now, we have application variable for it);
 // + remove data races ( 2xDataRaces in Socket Alive & client buf destroy - 25-Mar-17);
 // + removing global defining in structs;
+// + added steam openid support (long task);
 
 // TODO:
 // ? check & remove data races (regularly);
@@ -76,7 +77,6 @@ const (
 // - replace default http router with fasthttp router;
 // - adding rpc connection support between server and client (golang and js);
 // - rename all strcut method's variables
-// - added steam openid support (long task);
 
 func main() {
 	newApp()
