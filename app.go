@@ -54,6 +54,7 @@ func ( a *app ) threadHTTPD() {
 	hr.HandleFunc( "/debug/pprof/profile", pprof.Profile )
 	hr.HandleFunc( "/debug/pprof/symbol", pprof.Symbol )
 	hr.HandleFunc( "/debug/pprof/trace", pprof.Trace )
+	hr.HandleFunc( "/login", hr.webSteamOpenid )
 
 	l.w( LLEV_INF, "Starting HTTP serving ...")
 	for i := uint8(0); i < uint8(4); i++ {

@@ -119,6 +119,20 @@ func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 		next.ServeHTTP(w,r)
 	})
 }
+func (self *httpRouter) webSteamOpenid( w http.ResponseWriter, r *http.Request ) {
+	oid := _steamOpenID(r)
+
+	switch oid.Mode() {
+	case "":
+		http.Redirect( w, r, oid.AuthUrl(), 301 )
+	case "cancel":
+		w.Write([]byte("Authorization cancelled!"))
+	default:
+		if steamid, e := oid.ValidateAndGetId(); e != nil {
+			http.Error( w, e.Error(), http.StatusInternalServerError )
+		} else { w.Write([]byte(steamid)) }
+	}
+}
 func ( hr *httpRouter ) webRoot( w http.ResponseWriter, r *http.Request ) {}
 func ( hr *httpRouter ) webNotFound( w http.ResponseWriter, r *http.Request ) {
 	w.Write( []byte("Sorry, but this page has been killed!") )

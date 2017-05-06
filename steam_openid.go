@@ -32,7 +32,7 @@ func _steamOpenID( r *http.Request ) *steamOpenID {
 	if r.TLS == nil {
 		self.net_proto = "http://"
 	} else { self.net_proto = "https://" }
-	self.net_url = self.net_proto + r.Host
+	self.net_url = self.net_proto + r.Header.Get("X-Forwarded-Host")
 
 	uri := r.RequestURI
 	if i := strings.Index( uri, "openid" ); i != -1 {
@@ -90,6 +90,7 @@ func (self *steamOpenID) ValidateAndGetId() ( string, error ) {
 	for _,i := range strings.Split( self.data.Get("openid.signed"), "," ) {
 		params.Set( "openid." + i, self.data.Get( "openid." + i ) )
 	}
+	params.Set("openid.mode", "check_authentication")
 
 	rsp, e := http.PostForm( appSteamID_Url, params ); if e != nil { return "",e }
 	defer rsp.Body.Close()
