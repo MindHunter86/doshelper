@@ -87,6 +87,7 @@ func main() {
 	application.slogger.w( LLEV_OK, "Kernel signal catcher has been initialized!")
 
 	go application.threadHTTPD()
+	go application.rpcServe()
 	application.slogger.w(LLEV_OK, "Application started!")
 
 	for {

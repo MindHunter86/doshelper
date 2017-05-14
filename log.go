@@ -11,6 +11,7 @@ const (
 	LPFX_WEBROOT
 	LPFX_NOTFOUND
 	LPFX_USERMANAGE
+	LPFX_RPC
 )
 const (
 	LLEV_DBG = iota
@@ -45,6 +46,8 @@ func ( l *logger ) getPrefix( colo bool ) string {
 		if colo { return "\x1b[36;1m[HTTPD-WEBROOT]:\x1b[0m" } else { return "[HTTPD-WEBROOT]: " }
 	case LPFX_USERMANAGE:
 		if colo { return "\x1b[36;1m[HTTPD-MIDDLEUSER]:\x1b[0m" } else { return "[HTTPD-MIDDLEUSER]: " }
+	case LPFX_RPC:
+		if colo { return "\x1b[36;1m[RPC]:\x1b[0m" } else { return "[RPC]: " }
 	default:
 		return ""
 	}
@@ -95,7 +98,6 @@ func ( fl *fileLogger ) start() {
 	go func() {
 		fl.Add(1)
 		defer fl.Done()
-		log.Println("Log worker has been started!")
 
 		for {
 			select{

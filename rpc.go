@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"net/rpc"
+	"net/rpc/jsonrpc"
 
 	"sync"
 	"errors"
@@ -12,48 +13,56 @@ import (
 var (
 	err_RpcService_DefinedListener = errors.New("Listener has been already defined!")
 	err_RpcService_NonAliveListener = errors.New("Listener is not alive!")
-	err_RpcService_UnexpectedClose = errors.New("Rpc Service has been closed!")
 )
 
 type rpcService struct {
-	listener *net.Listener
+	listener net.Listener
 	server *rpc.Server
 	sync.RWMutex
 	alive bool
 }
 func _rpcService() ( *rpcService, error ) {
-	var rpc *rpcService = new(rpcService)
+	var service *rpcService = new(rpcService)
 
-	if rpc.newListener(); e != nil { return nil,e }
-	return rpc,nil
+	service.server = rpc.NewServer()
+	if e := service.newListener(); e != nil { return nil,e }
+	return service,nil
 }
 func (self *rpcService) newListener() error {
 	if self.listener != nil { return err_RpcService_DefinedListener }
 
 	var e error
-	if self.listener, e := net.Listen( "tcp", ":8081" ); e == nil {
-		self.Lock()
-		self.alive = true
-		self.Unlock()
-	} else { return e }
+	if self.listener, e = net.Listen( "tcp", ":8081" ); e != nil {
+		return e
+	}
+
+	self.Lock()
+	self.alive = true
+	self.Unlock()
+
+	return nil
 }
 func (self *rpcService) killListener() error {
 	self.Lock()
 	defer self.Unlock()
 
-	if self.alive == true {
-		self.alive = false
-		return self.listener.Close()
-	} else { return err_RpcService_NonAliveListener }
+	if self.alive == false { return err_RpcService_NonAliveListener }
+	self.alive = false
+	return self.listener.Close()
 }
 
-func (self *rpcService) rpvServe() error {
+func (self *rpcService) serve() error {
+	if self.listener == nil  { return err_RpcService_NonAliveListener }
 
-	if self.listener != nil {
-		self.server.Accept(self.listener)
-	} else { return err_RpcService_NonAliveListener }
-
-	if self.Lock(); self.alive == true {
-		return err_RpcService_UnexpectedClose
+	var e error
+	for {
+		conn, e := self.listener.Accept(); if e != nil { break }
+		go self.server.ServeCodec( jsonrpc.NewServerCodec(conn) )
 	}
+
+	self.RLock()
+	defer self.RUnlock()
+	if self.alive == true { return e }
+
+	return nil 
 }

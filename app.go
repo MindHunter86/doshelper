@@ -15,6 +15,7 @@ type app struct {
 	sync.WaitGroup
 	clients *activeClients
 	socket *sockListener
+	rpc *rpcService
 	flogger *fileLogger
 	slogger *logger
 }
@@ -23,18 +24,43 @@ func newApp() {
 	var e error
 	application = &app{ clients: &activeClients{} }
 
-	if e = application.newFileLogger( appLogPath, appLogBuf ); e != nil { log.Fatalln(e); return }
-	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln(e); return }
+	if e = application.newFileLogger( appLogPath, appLogBuf ); e != nil { log.Fatalln("Application INIT problem:", e); return }
+	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln("Application INIT problem:", e); return }
+	if application.rpc, e = _rpcService(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 
 	application.slogger = application.newLogger(LPFX_CORE)
 	application.flogger.start()
 	application.clients.init()
 }
 func ( a *app ) destroy() {
+	a.rpc.killListener() // close all rpc connections
 	a.socket.stop() // close all sockets, break http listen
 	a.clients.destroy() // clean clients buffer, writing all data in SQL (in future)
+	a.Wait() // Goroutines "Workers" waiting
+
 	a.flogger.stop() // stop file logger goroutine and wait it's closing
-	a.flogger.Wait()
+	a.flogger.Wait() // Log buffer waiting
+}
+
+func ( self *app ) rpcServe() {
+	self.Add(1)
+
+	l := self.newLogger(LPFX_RPC)
+	l.w( LLEV_OK, "RPC goroutine has been inited!" )
+
+	l.w( LLEV_INF, "Starting RPC serving ..." )
+	for i := uint8(0); i < uint8(4); i++ {
+		if e := self.rpc.serve(); e != nil {
+			l.w( LLEV_WRN, "Pre-fail state! rpcServe error:" + e.Error() )
+			l.w( LLEV_INF, "Trying to restart rpcServing ..." )
+			continue
+		}
+		l.w( LLEV_OK, "RPC serving has been stopped!" )
+		break
+	}
+
+	l.w( LLEV_OK, "RPC goroutine has been destroyed!" )
+	self.Done()
 }
 func ( a *app ) threadHTTPD() {
 	a.Add(1)
