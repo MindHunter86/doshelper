@@ -114,7 +114,7 @@ func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 		}
 		for _, ck := range cooks {
 			hr.lgUserManage.w( LLEV_DBG, ck.String() )
-			http.SetCookie(w,ck)
+			http.SetCookie(w,ck) // - Disable only for testing golucky project
 		}
 		next.ServeHTTP(w,r)
 	})
