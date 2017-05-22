@@ -12,6 +12,7 @@ const (
 	LPFX_NOTFOUND
 	LPFX_USERMANAGE
 	LPFX_RPC
+	LPFX_API
 )
 const (
 	LLEV_DBG = iota
@@ -48,6 +49,8 @@ func ( l *logger ) getPrefix( colo bool ) string {
 		if colo { return "\x1b[36;1m[HTTPD-MIDDLEUSER]:\x1b[0m" } else { return "[HTTPD-MIDDLEUSER]: " }
 	case LPFX_RPC:
 		if colo { return "\x1b[36;1m[RPC]:\x1b[0m" } else { return "[RPC]: " }
+	case LPFX_API:
+		if colo { return "\x1b[36;1m[API]:\x1b[0m" } else { return "[API]: " }
 	default:
 		return ""
 	}

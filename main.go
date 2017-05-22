@@ -88,6 +88,7 @@ func main() {
 
 	go application.threadHTTPD()
 	go application.rpcServe()
+	go application.apiServe()
 	application.slogger.w(LLEV_OK, "Application started!")
 
 	for {

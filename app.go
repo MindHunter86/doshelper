@@ -5,6 +5,7 @@ import "sync"
 import "net/http"
 import "net/http/pprof"
 import "log"
+import "doshelpv2/apimodule"
 
 import "github.com/gorilla/mux"
 //	Use CORS from here???
@@ -16,6 +17,7 @@ type app struct {
 	clients *activeClients
 	socket *sockListener
 	rpc *rpcService
+	api *apimodule.ApiModule
 	flogger *fileLogger
 	slogger *logger
 }
@@ -27,6 +29,7 @@ func newApp() {
 	if e = application.newFileLogger( appLogPath, appLogBuf ); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.rpc, e = _rpcService(); e != nil { log.Fatalln("Application INIT problem:", e); return }
+	if application.api, e = apimodule.InitModule(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 
 	application.slogger = application.newLogger(LPFX_CORE)
 	application.flogger.start()
@@ -34,6 +37,7 @@ func newApp() {
 }
 func ( a *app ) destroy() {
 	a.rpc.killListener() // close all rpc connections
+	a.api.DeInitModule() // close all apimodule connections
 	a.socket.stop() // close all sockets, break http listen
 	a.clients.destroy() // clean clients buffer, writing all data in SQL (in future)
 	a.Wait() // Goroutines "Workers" waiting
@@ -42,6 +46,24 @@ func ( a *app ) destroy() {
 	a.flogger.Wait() // Log buffer waiting
 }
 
+func (self *app) apiServe() {
+	self.Add(1)
+	l := self.newLogger(LPFX_API)
+	l.w( LLEV_OK, "APImodule goroutine has been inited!" )
+
+	l.w( LLEV_INF, "Starting API serving ..." )
+	for i := uint8(0); i < uint8(4); i++ {
+		if e := self.api.Serve(); e != nil {
+			l.w( LLEV_WRN, "Pre-fail state! apiServe error:" + e.Error() )
+			l.w( LLEV_INF, "Trying to restart apiServing ..." )
+		}
+		l.w( LLEV_OK, "APImodule goroutine has been stopped!" )
+		break
+	}
+
+	l.w( LLEV_OK, "APImodule goroutine has been destroyed!" )
+	self.Done()
+}
 func ( self *app ) rpcServe() {
 	self.Add(1)
 
