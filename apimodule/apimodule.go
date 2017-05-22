@@ -20,11 +20,14 @@ type ApiModule struct {
 }
 func InitModule() ( *ApiModule, error ) {
 	var e error
-	if apimodule != nil { apimodule = new(ApiModule) }
+	if apimodule == nil { apimodule = new(ApiModule) }
 
 	if apimodule.router, e = new(apiRouter).configure(); e != nil { return nil,e }
 	if apimodule.service, e = new(apiService).configure(); e != nil { return nil,e }
 	return apimodule,nil
+}
+func (self *ApiModule) Serve() error {
+	return apimodule.service.serve()
 }
 func (self *ApiModule) DeInitModule() error {
 	return self.service.kill()

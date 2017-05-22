@@ -11,22 +11,6 @@ type apiService struct {
 	sync.RWMutex
 	tcp_alive bool
 }
-// Start serving some port
-func (self *apiService) Serve() error {
-	var listener net.Listener
-	var router func(ctx *fasthttp.RequestCtx)
-
-	if self.RLock(); self.lsn != nil {
-		listener, router = self.lsn, apimodule.router.Handler
-	} else { self.RUnlock(); return err_lsnNotAlive }
-	self.RUnlock()
-
-	e := fasthttp.Serve( listener, router )
-
-	self.RLock(); defer self.RUnlock()
-	if self.tcp_alive == false { return nil } //  it means, that exit called by application
-	return e
-}
 func (self *apiService) configure() ( *apiService, error ) {
 	self.Lock(); self.tcp_alive = false; self.Unlock()
 
@@ -40,6 +24,21 @@ func (self *apiService) kill() error {
 	if self.tcp_alive == false { return err_lsnNotAlive }
 	self.tcp_alive = false
 	return self.lsn.Close()
+}
+func (self *apiService) serve() error {
+	var listener net.Listener
+	var router func(ctx *fasthttp.RequestCtx)
+
+	if self.RLock(); self.lsn != nil {
+		listener, router = self.lsn, apimodule.router.Handler
+	} else { self.RUnlock(); return err_lsnNotAlive }
+	self.RUnlock()
+
+	e := fasthttp.Serve( listener, router )
+
+	self.RLock(); defer self.RUnlock()
+	if self.tcp_alive == false { return nil } //  it means, that exit called by application
+	return e
 }
 func (self *apiService) newListener() error {
 	if self.lsn != nil { return err_lsnAlreadyDefined }
