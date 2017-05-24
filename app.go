@@ -6,6 +6,7 @@ import "net/http"
 import "net/http/pprof"
 import "log"
 import "doshelpv2/apimodule"
+import "doshelpv2/apicore"
 
 import "github.com/gorilla/mux"
 //	Use CORS from here???
@@ -18,6 +19,7 @@ type app struct {
 	socket *sockListener
 	rpc *rpcService
 	api *apimodule.ApiModule
+	core *apicore.ApiCore
 	flogger *fileLogger
 	slogger *logger
 }
@@ -36,8 +38,11 @@ func newApp() {
 	application.clients.init()
 }
 func ( a *app ) destroy() {
+	// PRE PROD KILL ZONE
 	a.rpc.killListener() // close all rpc connections
 	a.api.DeInitModule() // close all apimodule connections
+
+	// Test KILL ZONE
 	a.socket.stop() // close all sockets, break http listen
 	a.clients.destroy() // clean clients buffer, writing all data in SQL (in future)
 	a.Wait() // Goroutines "Workers" waiting
