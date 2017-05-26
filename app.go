@@ -6,11 +6,17 @@ import "net/http"
 import "net/http/pprof"
 import "log"
 import "doshelpv2/apimodule"
-//import "doshelpv2/apicore"
+import "doshelpv2/apicore"
 
 import "github.com/gorilla/mux"
+import "golang.org/x/net/context"
 //	Use CORS from here???
 //	import "github.com/gorilla/handlers"
+
+const (
+	CTX_APP = iota
+	CTX_LOG
+)
 
 var application *app
 type app struct {
@@ -19,7 +25,7 @@ type app struct {
 	socket *sockListener
 	rpc *rpcService
 	api *apimodule.ApiModule
-//	core *apicore.ApiCore
+	core *apicore.ApiCore
 	flogger *fileLogger
 	slogger *logger
 }
@@ -27,11 +33,13 @@ type app struct {
 func newApp() {
 	var e error
 	application = &app{ clients: &activeClients{} }
+	ctx := context.WithValue( context.Background(), CTX_APP, application )
 
 	if e = application.newFileLogger( appLogPath, appLogBuf ); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.rpc, e = _rpcService(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.api, e = apimodule.InitModule(); e != nil { log.Fatalln("Application INIT problem:", e); return }
+	if application.core, e = apicore.InitModule(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
 
 	application.slogger = application.newLogger(LPFX_CORE)
 	application.flogger.start()
@@ -40,6 +48,7 @@ func newApp() {
 func ( a *app ) destroy() {
 	// PRE PROD KILL ZONE
 	a.rpc.killListener() // close all rpc connections
+	a.core.DeInitModule() // remove all handlers and data
 	a.api.DeInitModule() // close all apimodule connections
 
 	// Test KILL ZONE

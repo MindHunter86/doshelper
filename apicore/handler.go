@@ -4,7 +4,7 @@ import "github.com/valyala/fasthttp"
 
 type handler struct {
 }
-func (self *handler) login( ctx *fasthttp.RequestCtx ) {
+func (self *handler) Login( ctx *fasthttp.RequestCtx ) {
 	var steamoid *steamOid
 	var e error
 
