@@ -1,7 +1,6 @@
 package apicore
 
 import "errors"
-import "doshelpv2"
 import "doshelpv2/users"
 import "golang.org/x/net/context"
 
@@ -14,7 +13,7 @@ type ApiCore struct {
 	handlers *handler
 }
 func InitModule( ctx context.Context ) ( *ApiCore, error ) {
-	app := ctx.Value(doshelpv2.CTX_APP).(doshelpv2.AppCtx)
+	//	app := ctx.Value(doshelpv2.CTX_APP).(doshelpv2.AppCtx)
 	return nil,nil
 }
 func (self *ApiCore) DeInitModule() error {

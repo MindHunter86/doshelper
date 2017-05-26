@@ -5,6 +5,7 @@ import "sync"
 import "net/http"
 import "net/http/pprof"
 import "log"
+import dlog "doshelpv2/log"
 import "doshelpv2/apimodule"
 import "doshelpv2/apicore"
 
@@ -26,8 +27,8 @@ type app struct {
 	rpc *rpcService
 	api *apimodule.ApiModule
 	core *apicore.ApiCore
-	flogger *fileLogger
-	slogger *logger
+	flogger *dlog.FileLogger
+	slogger *dlog.Logger
 }
 
 func newApp() {
@@ -41,8 +42,8 @@ func newApp() {
 	if application.api, e = apimodule.InitModule(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.core, e = apicore.InitModule(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
 
-	application.slogger = application.newLogger(LPFX_CORE)
-	application.flogger.start()
+	application.slogger = application.newLogger(dlog.LPFX_CORE)
+	application.flogger.Start()
 	application.clients.init()
 }
 func ( a *app ) destroy() {
@@ -56,52 +57,52 @@ func ( a *app ) destroy() {
 	a.clients.destroy() // clean clients buffer, writing all data in SQL (in future)
 	a.Wait() // Goroutines "Workers" waiting
 
-	a.flogger.stop() // stop file logger goroutine and wait it's closing
+	a.flogger.Stop() // stop file logger goroutine and wait it's closing
 	a.flogger.Wait() // Log buffer waiting
 }
 
 func (self *app) apiServe() {
 	self.Add(1)
-	l := self.newLogger(LPFX_API)
-	l.w( LLEV_OK, "APImodule goroutine has been inited!" )
+	l := self.newLogger(dlog.LPFX_API)
+	l.W( dlog.LLEV_OK, "APImodule goroutine has been inited!" )
 
-	l.w( LLEV_INF, "Starting API serving ..." )
+	l.W( dlog.LLEV_INF, "Starting API serving ..." )
 	for i := uint8(0); i < uint8(4); i++ {
 		if e := self.api.Serve(); e != nil {
-			l.w( LLEV_WRN, "Pre-fail state! apiServe error:" + e.Error() )
-			l.w( LLEV_INF, "Trying to restart apiServing ..." )
+			l.W( dlog.LLEV_WRN, "Pre-fail state! apiServe error:" + e.Error() )
+			l.W( dlog.LLEV_INF, "Trying to restart apiServing ..." )
 		}
-		l.w( LLEV_OK, "APImodule goroutine has been stopped!" )
+		l.W( dlog.LLEV_OK, "APImodule goroutine has been stopped!" )
 		break
 	}
 
-	l.w( LLEV_OK, "APImodule goroutine has been destroyed!" )
+	l.W( dlog.LLEV_OK, "APImodule goroutine has been destroyed!" )
 	self.Done()
 }
 func ( self *app ) rpcServe() {
 	self.Add(1)
 
-	l := self.newLogger(LPFX_RPC)
-	l.w( LLEV_OK, "RPC goroutine has been inited!" )
+	l := self.newLogger(dlog.LPFX_RPC)
+	l.W( dlog.LLEV_OK, "RPC goroutine has been inited!" )
 
-	l.w( LLEV_INF, "Starting RPC serving ..." )
+	l.W( dlog.LLEV_INF, "Starting RPC serving ..." )
 	for i := uint8(0); i < uint8(4); i++ {
 		if e := self.rpc.serve(); e != nil {
-			l.w( LLEV_WRN, "Pre-fail state! rpcServe error:" + e.Error() )
-			l.w( LLEV_INF, "Trying to restart rpcServing ..." )
+			l.W( dlog.LLEV_WRN, "Pre-fail state! rpcServe error:" + e.Error() )
+			l.W( dlog.LLEV_INF, "Trying to restart rpcServing ..." )
 			continue
 		}
-		l.w( LLEV_OK, "RPC serving has been stopped!" )
+		l.W( dlog.LLEV_OK, "RPC serving has been stopped!" )
 		break
 	}
 
-	l.w( LLEV_OK, "RPC goroutine has been destroyed!" )
+	l.W( dlog.LLEV_OK, "RPC goroutine has been destroyed!" )
 	self.Done()
 }
 func ( a *app ) threadHTTPD() {
 	a.Add(1)
-	l := a.newLogger(LPFX_HTTPD)
-	l.w( LLEV_OK, "HTTPD goroutine has been inited!")
+	l := a.newLogger(dlog.LPFX_HTTPD)
+	l.W( dlog.LLEV_OK, "HTTPD goroutine has been inited!")
 
 	hr := a.newHttpRouter()
 	webRootPage := http.HandlerFunc(hr.webRoot)
@@ -118,47 +119,47 @@ func ( a *app ) threadHTTPD() {
 	hr.HandleFunc( "/debug/pprof/trace", pprof.Trace )
 	hr.HandleFunc( "/login", hr.webSteamOpenid )
 
-	l.w( LLEV_INF, "Starting HTTP serving ...")
+	l.W( dlog.LLEV_INF, "Starting HTTP serving ...")
 	for i := uint8(0); i < uint8(4); i++ {
 		if e := a.socket.serveHTTP( hr.Router ); e != nil {
-			l.w( LLEV_WRN, "Pre-fail state! HTTPServe error: " + e.Error())
-			l.w( LLEV_INF, "Trying to restart HTTPServing ...")
+			l.W( dlog.LLEV_WRN, "Pre-fail state! HTTPServe error: " + e.Error())
+			l.W( dlog.LLEV_INF, "Trying to restart HTTPServing ...")
 			continue;
 		}
-		l.w( LLEV_OK, "HTTP serving has been stopped!")
+		l.W( dlog.LLEV_OK, "HTTP serving has been stopped!")
 		break;
 	}
 
-	l.w( LLEV_OK, "HTTPD goroutine has been destroyed!")
+	l.W( dlog.LLEV_OK, "HTTPD goroutine has been destroyed!")
 	a.Done()
 }
 // 2DELETE
 //func final(w http.ResponseWriter, r *http.Request) {
 //	w.Write([]byte("2345678"))
 //}
-func ( a *app ) newLogger( prefix uint8 ) *logger {
-	return &logger{
+func ( a *app ) newLogger( prefix uint8 ) *dlog.Logger {
+	return &dlog.Logger{
 		Logger: log.New( os.Stdout, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
-		ch_message: a.flogger.mess_queue,
-		prefix: prefix,
+		Ch_message: a.flogger.Mess_queue,
+		Prefix: prefix,
 	}
 }
 func ( a *app ) newFileLogger( fpath string, logbuf int ) ( error ) {
 	fd, e := os.OpenFile( fpath, os.O_CREATE | os.O_APPEND | os.O_RDWR, 0600 )
 	if e != nil { return e }
 
-	a.flogger = &fileLogger{
+	a.flogger = &dlog.FileLogger{
 		Logger: log.New( fd, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
-		mess_queue: make( chan string, logbuf ),
-		stop_handle: make( chan bool ),
+		Mess_queue: make( chan string, logbuf ),
+		Stop_handle: make( chan bool ),
 	}
 	return nil
 }
 func ( a *app ) newHttpRouter() *httpRouter {
 	return &httpRouter{
 		Router: mux.NewRouter(),
-		lgRoot: a.newLogger(LPFX_WEBROOT),
-		lgNotfound: a.newLogger(LPFX_NOTFOUND),
-		lgUserManage: a.newLogger(LPFX_USERMANAGE),
+		lgRoot: a.newLogger(dlog.LPFX_WEBROOT),
+		lgNotfound: a.newLogger(dlog.LPFX_NOTFOUND),
+		lgUserManage: a.newLogger(dlog.LPFX_USERMANAGE),
 	}
 }

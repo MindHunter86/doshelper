@@ -1,9 +1,7 @@
-package main
-import (
-	"log"
-	"sync"
-)
+package log
 
+import "log"
+import "sync"
 
 const (
 	LPFX_CORE = iota
@@ -23,22 +21,21 @@ const (
 	LLEV_ERR
 )
 
-type logger struct {
+type Logger struct {
 	*log.Logger
-	ch_message chan string
+	Ch_message chan string
 	sync.RWMutex
-	prefix uint8
+	Prefix uint8
 }
 
-
-func ( l *logger ) setPrefix( p uint8 ) {
-	l.Lock(); l.prefix = p; l.Unlock()
+func ( l *Logger ) SetPrefix( p uint8 ) {
+	l.Lock(); l.Prefix = p; l.Unlock()
 }
-func ( l *logger ) getPrefix( colo bool ) string {
+func ( l *Logger ) GetPrefix( colo bool ) string {
 	l.RLock()
 	defer l.RUnlock()
 
-	switch l.prefix {
+	switch l.Prefix {
 	case LPFX_CORE:
 		if colo { return "\x1b[36;1m[CORE]:\x1b[0m" } else { return "[CORE]: " }
 	case LPFX_HTTPD:
@@ -55,61 +52,61 @@ func ( l *logger ) getPrefix( colo bool ) string {
 		return ""
 	}
 }
-func ( l *logger ) w( lvl uint8, m string ) {
+func ( l *Logger ) W( lvl uint8, m string ) {
 // log to file
 	switch lvl {
 	case LLEV_DBG:
-		l.ch_message <- l.getPrefix(false) + "DBG: " + m
+		l.Ch_message <- l.GetPrefix(false) + "DBG: " + m
 	case LLEV_INF:
-		l.ch_message <- l.getPrefix(false) + "INF: " + m
+		l.Ch_message <- l.GetPrefix(false) + "INF: " + m
 	case LLEV_OK:
-		l.ch_message <- l.getPrefix(false) + "SUC: " + m
+		l.Ch_message <- l.GetPrefix(false) + "SUC: " + m
 	case LLEV_NON:
-		l.ch_message <- l.getPrefix(false) + "FAI: " + m
+		l.Ch_message <- l.GetPrefix(false) + "FAI: " + m
 	case LLEV_WRN:
-		l.ch_message <- l.getPrefix(false) + "WRN: " + m
+		l.Ch_message <- l.GetPrefix(false) + "WRN: " + m
 	case LLEV_ERR:
-		l.ch_message <- l.getPrefix(false) + "ERR: " + m
+		l.Ch_message <- l.GetPrefix(false) + "ERR: " + m
 	}
 
 // log to stdout
 	switch lvl {
 	case LLEV_DBG:
-		l.Println( l.getPrefix(true), m )
+		l.Println( l.GetPrefix(true), m )
 	case LLEV_OK:
-		l.Println( l.getPrefix(true), "\x1b[32;1m✔\x1b[0m", m )
+		l.Println( l.GetPrefix(true), "\x1b[32;1m✔\x1b[0m", m )
 	case LLEV_NON:
-		l.Println( l.getPrefix(true), "\x1b[31;1m✖\x1b[0m", m)
+		l.Println( l.GetPrefix(true), "\x1b[31;1m✖\x1b[0m", m)
 	case LLEV_INF:
-		l.Println( l.getPrefix(true), "\x1b[34;1m🛈\x1b[0m", m)
+		l.Println( l.GetPrefix(true), "\x1b[34;1m🛈\x1b[0m", m)
 	case LLEV_WRN:
-		l.Println( l.getPrefix(true), "\x1b[33;1m❢\x1b[0;33;22m", m, "\x1b[0m")
+		l.Println( l.GetPrefix(true), "\x1b[33;1m❢\x1b[0;33;22m", m, "\x1b[0m")
 	case LLEV_ERR:
-		l.Println( l.getPrefix(true), "\x1b[31;22m❢\x1b[0;31;1m", m, "\x1b[0m")
+		l.Println( l.GetPrefix(true), "\x1b[31;22m❢\x1b[0;31;1m", m, "\x1b[0m")
 	}
 }
 
 
-type fileLogger struct {
+type FileLogger struct {
 	sync.WaitGroup
 	*log.Logger
-	mess_queue chan string
-	stop_handle chan bool
+	Mess_queue chan string
+	Stop_handle chan bool
 }
 
-func ( fl *fileLogger ) start() {
+func ( fl *FileLogger ) Start() {
 	go func() {
 		fl.Add(1)
 		defer fl.Done()
 
 		for {
 			select{
-			case m := <-fl.mess_queue:
+			case m := <-fl.Mess_queue:
 				fl.Println(m)
-			case <-fl.stop_handle:
-				var buf_size uint8 = uint8( len(fl.mess_queue) )
+			case <-fl.Stop_handle:
+				var buf_size uint8 = uint8( len(fl.Mess_queue) )
 				for ; buf_size != 0; buf_size-- {
-					fl.Println(<-fl.mess_queue)
+					fl.Println(<-fl.Mess_queue)
 				}
 				log.Println("Log worker has been stopped! Buf is empty")
 				return
@@ -117,6 +114,6 @@ func ( fl *fileLogger ) start() {
 		}
 	}()
 }
-func ( fl *fileLogger ) stop() {
-	close(fl.stop_handle)
+func ( fl *FileLogger ) Stop() {
+	close(fl.Stop_handle)
 }

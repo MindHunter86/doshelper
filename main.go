@@ -10,6 +10,7 @@ import (
 
 	"errors"
 )
+import dlog "doshelpv2/log"
 import "github.com/gorilla/mux"
 
 const (
@@ -84,17 +85,17 @@ func main() {
 
 	var sgn = make( chan os.Signal )
 	signal.Notify( sgn, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT )
-	application.slogger.w( LLEV_OK, "Kernel signal catcher has been initialized!")
+	application.slogger.W( dlog.LLEV_OK, "Kernel signal catcher has been initialized!")
 
 	go application.threadHTTPD()
 	go application.rpcServe()
 	go application.apiServe()
-	application.slogger.w(LLEV_OK, "Application started!")
+	application.slogger.W(dlog.LLEV_OK, "Application started!")
 
 	for {
 		select {
 		case <-sgn:
-			application.slogger.w( LLEV_ERR, "Catched QUIT signal from kernel! Stopping prg...")
+			application.slogger.W( dlog.LLEV_ERR, "Catched QUIT signal from kernel! Stopping prg...")
 			return
 		}
 	}
@@ -103,19 +104,19 @@ func main() {
 
 type httpRouter struct {
 	*mux.Router
-	lgRoot *logger
-	lgNotfound *logger
-	lgUserManage *logger
+	lgRoot *dlog.Logger
+	lgNotfound *dlog.Logger
+	lgUserManage *dlog.Logger
 }
 func ( hr *httpRouter ) middleUserManage( next http.Handler ) http.Handler {
 	return http.HandlerFunc(func( w http.ResponseWriter, r *http.Request ) {
 		_, cooks, e := newClient(&r.Header); if e != nil {
-			hr.lgUserManage.w( LLEV_WRN, e.Error() )
+			hr.lgUserManage.W( dlog.LLEV_WRN, e.Error() )
 			http.Error( w, ERR_MDL_USERFAIL, http.StatusInternalServerError )
 			return
 		}
 		for _, ck := range cooks {
-			hr.lgUserManage.w( LLEV_DBG, ck.String() )
+			hr.lgUserManage.W( dlog.LLEV_DBG, ck.String() )
 			http.SetCookie(w,ck) // - Disable only for testing golucky project
 		}
 		next.ServeHTTP(w,r)
