@@ -5,6 +5,7 @@ import "sync"
 import "net/http"
 import "net/http/pprof"
 import "log"
+import "doshelpv2/appctx"
 import dlog "doshelpv2/log"
 import "doshelpv2/apimodule"
 import "doshelpv2/apicore"
@@ -14,10 +15,6 @@ import "golang.org/x/net/context"
 //	Use CORS from here???
 //	import "github.com/gorilla/handlers"
 
-const (
-	CTX_APP = iota
-	CTX_LOG
-)
 
 var application *app
 type app struct {
@@ -34,17 +31,22 @@ type app struct {
 func newApp() {
 	var e error
 	application = &app{ clients: &activeClients{} }
-	ctx := context.WithValue( context.Background(), CTX_APP, application )
 
 	if e = application.newFileLogger( appLogPath, appLogBuf ); e != nil { log.Fatalln("Application INIT problem:", e); return }
+	application.slogger = application.newLogger(dlog.LPFX_CORE)
+	application.flogger.Start()
+	application.clients.init()
+
+	// Activate module context buffer:
+	var ctx context.Context
+	ctx = context.WithValue( context.Background(), appctx.CTX_LOG_STD, application.slogger )
+	ctx = context.WithValue( ctx, appctx.CTX_LOG_FILE, application.flogger )
+
+	// Modules initialization:
 	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.rpc, e = _rpcService(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.api, e = apimodule.InitModule(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.core, e = apicore.InitModule(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
-
-	application.slogger = application.newLogger(dlog.LPFX_CORE)
-	application.flogger.Start()
-	application.clients.init()
 }
 func ( a *app ) destroy() {
 	// PRE PROD KILL ZONE
@@ -63,7 +65,7 @@ func ( a *app ) destroy() {
 
 func (self *app) apiServe() {
 	self.Add(1)
-	l := self.newLogger(dlog.LPFX_API)
+	l := self.newLogger(dlog.LPFX_MODAPI)
 	l.W( dlog.LLEV_OK, "APImodule goroutine has been inited!" )
 
 	l.W( dlog.LLEV_INF, "Starting API serving ..." )
@@ -82,7 +84,7 @@ func (self *app) apiServe() {
 func ( self *app ) rpcServe() {
 	self.Add(1)
 
-	l := self.newLogger(dlog.LPFX_RPC)
+	l := self.newLogger(dlog.LPFX_MODRPC)
 	l.W( dlog.LLEV_OK, "RPC goroutine has been inited!" )
 
 	l.W( dlog.LLEV_INF, "Starting RPC serving ..." )

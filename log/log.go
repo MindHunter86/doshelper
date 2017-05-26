@@ -9,8 +9,9 @@ const (
 	LPFX_WEBROOT
 	LPFX_NOTFOUND
 	LPFX_USERMANAGE
-	LPFX_RPC
-	LPFX_API
+	LPFX_MODRPC
+	LPFX_MODAPI
+	LPFX_MODCORE
 )
 const (
 	LLEV_DBG = iota
@@ -44,10 +45,12 @@ func ( l *Logger ) GetPrefix( colo bool ) string {
 		if colo { return "\x1b[36;1m[HTTPD-WEBROOT]:\x1b[0m" } else { return "[HTTPD-WEBROOT]: " }
 	case LPFX_USERMANAGE:
 		if colo { return "\x1b[36;1m[HTTPD-MIDDLEUSER]:\x1b[0m" } else { return "[HTTPD-MIDDLEUSER]: " }
-	case LPFX_RPC:
-		if colo { return "\x1b[36;1m[RPC]:\x1b[0m" } else { return "[RPC]: " }
-	case LPFX_API:
-		if colo { return "\x1b[36;1m[API]:\x1b[0m" } else { return "[API]: " }
+	case LPFX_MODRPC:
+		if colo { return "\x1b[36;1m[MODRPC]:\x1b[0m" } else { return "[MODRPC]: " }
+	case LPFX_MODAPI:
+		if colo { return "\x1b[36;1m[MODAPI]:\x1b[0m" } else { return "[MODAPI]: " }
+	case LPFX_MODCORE:
+		if colo { return "\x1b[36;1m[MODCORE]:\x1b[0m" } else { return "[MODCORE]: " }
 	default:
 		return ""
 	}
