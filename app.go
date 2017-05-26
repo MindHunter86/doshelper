@@ -6,7 +6,7 @@ import "net/http"
 import "net/http/pprof"
 import "log"
 import "doshelpv2/apimodule"
-import "doshelpv2/apicore"
+//import "doshelpv2/apicore"
 
 import "github.com/gorilla/mux"
 //	Use CORS from here???
@@ -19,7 +19,7 @@ type app struct {
 	socket *sockListener
 	rpc *rpcService
 	api *apimodule.ApiModule
-	core *apicore.ApiCore
+//	core *apicore.ApiCore
 	flogger *fileLogger
 	slogger *logger
 }

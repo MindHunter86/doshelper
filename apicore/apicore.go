@@ -16,3 +16,6 @@ func (self *ApiCore) InitModule() ( *ApiCore, error ) {
 func (self *ApiCore) DeInitModule() error {
 	return nil
 }
+func (self *ApiCore) GetUsers() ( *users.Users ) {
+	return self.users
+}

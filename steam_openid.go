@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"log"
 )
 
 
@@ -33,6 +34,9 @@ func _steamOpenID( r *http.Request ) *steamOpenID {
 		self.net_proto = "http://"
 	} else { self.net_proto = "https://" }
 	self.net_url = self.net_proto + r.Header.Get("X-Forwarded-Host")
+
+	log.Println(r.RequestURI)
+	log.Println(r.URL.RequestURI())
 
 	uri := r.RequestURI
 	if i := strings.Index( uri, "openid" ); i != -1 {
