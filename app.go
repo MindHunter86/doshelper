@@ -39,14 +39,16 @@ func newApp() {
 
 	// Activate module context buffer:
 	var ctx context.Context
-	ctx = context.WithValue( context.Background(), appctx.CTX_LOG_STD, application.slogger )
-	ctx = context.WithValue( ctx, appctx.CTX_LOG_FILE, application.flogger )
+	ctx = context.WithValue( context.Background(), appctx.CTX_LOG_FILE, application.flogger )
+	ctx = context.WithValue( ctx, appctx.CTX_MOD_APICORE, application.core )
 
 	// Modules initialization:
 	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.rpc, e = _rpcService(); e != nil { log.Fatalln("Application INIT problem:", e); return }
-	if application.api, e = apimodule.InitModule(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.core, e = apicore.InitModule(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
+
+	ctx = context.WithValue( ctx, appctx.CTX_MOD_APICORE, application.core )
+	if application.api, e = apimodule.InitModule(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
 }
 func ( a *app ) destroy() {
 	// PRE PROD KILL ZONE
