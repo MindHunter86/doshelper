@@ -26,6 +26,8 @@ type ApiHandlers interface {
 	// apicore_v1
 	CentrifugoConnection(*fasthttp.RequestCtx)
 }
+type ApiMiddlewares interface {
+}
 type ApiCore struct {
 	slogger *dlog.Logger
 	users *users.Users
@@ -33,6 +35,7 @@ type ApiCore struct {
 	jsoner *apiJsoner
 
 	Handlers ApiHandlers
+	Middlewares ApiMiddlewares
 
 	sign_secret []byte
 }
@@ -55,6 +58,9 @@ func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 	// Submodules initialization:
 	if core.signer, e = new(apiSigner).configure(apictx); e != nil { return nil,e }
 	if core.jsoner, e = new(apiJsoner).configure(apictx); e != nil { return nil,e }
+
+	// Exports initialization:
+	if core.Middlewares, e = new(apiMiddleware).configure(apictx); e != nil { return nil,e }
 	if core.Handlers, e = new(apiHandler).configure(apictx); e != nil { return nil,e } // Must be in end of list
 
 	return core,nil
