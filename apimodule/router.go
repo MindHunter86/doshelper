@@ -18,6 +18,7 @@ func (self *apiRouter) configure( ctx context.Context ) ( *apiRouter, error ) {
 	self.Router = fasthttprouter.New()
 	self.GET("/", self.rt_index)
 	self.GET("/login", core.Handlers.Login)
+	self.GET("/hmactest", core.Handlers.HmacTest)
 	return self,nil
 }
 func (self *apiRouter) rt_index(ctx *fasthttp.RequestCtx) {
