@@ -13,43 +13,49 @@ var (
 	err_nil = errors.New("nil")
 	err_glob_InvalidSelf = errors.New("Invalid self struct in configure method! Is self initialized?")
 	err_glob_InvalidContext = errors.New("Invalid input context in configure method!")
-	err_Signer_InvalidSigner = errors.New("Self Signer is invalid!")
-	err_Signer_InvalidInput = errors.New("Method input is invalid!")
+	err_Init_InvalidInputData = errors.New("Some data from module input is corrupted!")
 )
 
-var (
+var (  // Must be in some "config struct" in module input context! (See InitModule method)
 	module_super_secret = []byte("OKu2a1LXpmRoKrZS")
 )
 
 type ApiHandlers interface {
 	Login(*fasthttp.RequestCtx)
-	HmacTest(*fasthttp.RequestCtx)
+
+	// apicore_v1
+	CentrifugoConnection(*fasthttp.RequestCtx)
 }
 type ApiCore struct {
 	slogger *dlog.Logger
 	users *users.Users
 	signer *apiSigner
+	jsoner *apiJsoner
+
 	Handlers ApiHandlers
+
+	sign_secret []byte
 }
 func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 	var e error
 	var core *ApiCore = new(ApiCore)
 	var apictx context.Context = context.WithValue( context.Background(), appctx.CTX_MOD_APICORE, core )
 
-	// Log testing:
+	// Log initialization:
 	core.slogger = &dlog.Logger{
 		Logger: log.New( os.Stdout, "", log.Ldate | log.Ltime | log.Lmicroseconds ),
 		Ch_message: ctx.Value(appctx.CTX_LOG_FILE).(*dlog.FileLogger).Mess_queue,
 		Prefix: dlog.LPFX_MODCORE,
 	}
-	core.slogger.W( dlog.LLEV_DBG, "TEST TEST TEST FROM MODULE" )
+	core.slogger.W( dlog.LLEV_DBG, "ApiCore module initialization has been complete!" )
+
+	// Validate input "config" ( In future, this must be as config struct in context; Not as global variable!!! ):
+	if len(module_super_secret) == 0 { return nil,err_Init_InvalidInputData }
 
 	// Submodules initialization:
-	core.signer, e = new(apiSigner).configure( module_super_secret, core.slogger ) // slogger ONLY for debugging! (XXX)
-	if e != nil { return nil,e }
-
-	//Handlers initialization:
-	core.Handlers, e = new(apiHandler).configure( apictx ); if e != nil { return nil,e }
+	if core.signer, e = new(apiSigner).configure(apictx); e != nil { return nil,e }
+	if core.jsoner, e = new(apiJsoner).configure(apictx); e != nil { return nil,e }
+	if core.Handlers, e = new(apiHandler).configure(apictx); e != nil { return nil,e } // Must be in end of list
 
 	return core,nil
 }

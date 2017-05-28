@@ -3,19 +3,24 @@ package apicore
 import "crypto/hmac"
 import "crypto/sha1"
 
-import dlog "doshelpv2/log"
+import "doshelpv2/log"
+import "doshelpv2/appctx"
+
+import "golang.org/x/net/context"
 
 
 type apiSigner struct {
+	*ApiCore
 	secret []byte
 }
-func (self *apiSigner) configure( secret []byte, logger *dlog.Logger ) ( *apiSigner, error ) {
-	if self == nil { return nil,err_Signer_InvalidSigner }
+func (self *apiSigner) configure(ctx context.Context) ( *apiSigner, error ) {
+	if self == nil { return nil,err_glob_InvalidSelf }
+	if ctx == nil { return nil,err_glob_InvalidContext }
 
-	if len(secret) == 0 { return nil,err_Signer_InvalidInput }
-	self.secret = secret
+	self.ApiCore = ctx.Value(appctx.CTX_MOD_APICORE).(*ApiCore)
+	self.secret = self.sign_secret
 
-	logger.W( dlog.LLEV_DBG, "Hmac signer submodule has been inited!" )
+	self.slogger.W( log.LLEV_DBG, "Hmac submodule has been initialized and configured!")
 	return self,nil
 }
 func (self *apiSigner) sign( message []byte ) []byte {

@@ -48,27 +48,10 @@ func (self *apiHandler) Login( ctx *fasthttp.RequestCtx ) {
 
 		ctx.Response.Header.SetCookie(cookie)
 		ctx.Redirect("http://golucky.gotest.mh00.info/", 307)
+
+		//
+		// authid, e := steamoid.validate(); if e != nil { ctx.Error( e.Error(), nil ) } // XXX - nil
 	}
 }
-func (self *apiHandler) HmacTest( ctx *fasthttp.RequestCtx ) {
-	var input1 []byte = []byte("TestString; Super Secret!")
-	var input2 []byte = []byte("TestString; SuperSuperSecret!")
-
-	var signed1 = self.signer.sign(input1)
-	var signed2 = self.signer.sign(input2)
-
-//	var logical_boolean1 = self.signer.checkSign( input1, signed1 )
-//	var logical_boolean2 = self.signer.checkSign( input1, signed2 )
-//	self.signer.secret = []byte("12341234123")
-//	var logical_boolean3 = self.signer.checkSign( input1, signed1 )
-
-	self.slogger.W( log.LLEV_DBG, "1-st mess: " + string(input1) )
-	self.slogger.W( log.LLEV_DBG, "1-st sign: " + string(signed1) )
-	self.slogger.W( log.LLEV_DBG, "2-nd mess: " + string(input2) )
-	self.slogger.W( log.LLEV_DBG, "2-nd sign: " + string(signed2) )
-//	self.slogger.W( log.LLEV_DBG, "Check1(OK): " + logical_boolean1 )
-//	self.slogger.W( log.LLEV_DBG, "Check2(NON): " + logical_boolean2 )
-//	self.slogger.W( log.LLEV_DBG, "Check3(???): " + logical_boolean3 )
-
-	ctx.Write([]byte("Test completed! Check logs."))
+func (self *apiHandler) CentrifugoConnection(ctx *fasthttp.RequestCtx) {
 }
