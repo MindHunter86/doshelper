@@ -16,7 +16,7 @@ func (self *apiRouter) configure( ctx context.Context ) ( *apiRouter, error ) {
 	if core == nil { return nil,err_Init_InvalidCtxPointer }
 
 	self.Router = fasthttprouter.New()
-	self.GET("/", self.rt_index)
+	self.GET("/", core.Middlewares.QueryIdentificatorAdd(self.rt_index))
 	self.GET("/login", core.Handlers.Login)
 
 	// Api v1 methods:

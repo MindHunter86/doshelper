@@ -33,24 +33,25 @@ func (self *apiHandler) Login( ctx *fasthttp.RequestCtx ) {
 	case "cancel":
 		ctx.Write([]byte("Authorization cancelled!"))
 	default:
-		steamid, e := steamoid.validate(); if e != nil {
-			ctx.Error( e.Error(), fasthttp.StatusInternalServerError )
+		authid,e := steamoid.validate(); if e != nil {
+			// TODO: move error (e.Error()) in jsoner!!!
+			ctx.Error(e.Error(), fasthttp.StatusInternalServerError)
 		}
-		ctx.Write([]byte(steamid))
 
-		var cookie *fasthttp.Cookie = fasthttp.AcquireCookie()
-		cookie.SetKey("claimed_id")
-		cookie.SetPath("/")
-		cookie.SetValueBytes(steamid)
-		cookie.SetDomain(".gotest.mh00.info")
-		cookie.SetSecure(false)
-		cookie.SetHTTPOnly(true)
+		var dataCookie *fasthttp.Cookie = fasthttp.AcquireCookie()
+		dataCookie.SetKey("claimed_id")
+		dataCookie.SetPath("/")
+		dataCookie.SetDomain(".gotest.mh00.info")
+		dataCookie.SetSecure(false)
+		dataCookie.SetHTTPOnly(true)
+		dataCookie.SetValueBytes(authid)
 
-		ctx.Response.Header.SetCookie(cookie)
+		ctx.Response.Header.SetCookie(dataCookie)
 		ctx.Redirect("http://golucky.gotest.mh00.info/", 307)
 
-		//
-		// authid, e := steamoid.validate(); if e != nil { ctx.Error( e.Error(), nil ) } // XXX - nil
+		// XXX STOPPED HERE!; Create cookie, create JSON response; SIGN json response; Send cookie (2 cookie - data && sign )
+		// TODO ; ENCRYPT COOKIE ????
+
 	}
 }
 func (self *apiHandler) CentrifugoConnection(ctx *fasthttp.RequestCtx) {

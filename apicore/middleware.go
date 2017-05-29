@@ -4,6 +4,7 @@ import "doshelpv2/log"
 import "doshelpv2/appctx"
 
 import "golang.org/x/net/context"
+import "github.com/valyala/fasthttp"
 
 
 type apiMiddleware struct {
@@ -17,4 +18,10 @@ func (self *apiMiddleware) configure(ctx context.Context) (*apiMiddleware, error
 	self.slogger.W( log.LLEV_DBG, "Middleware submodule has been initialized and configured!" )
 
 	return self,nil
+}
+func (self *apiMiddleware) QueryIdentificatorAdd(next fasthttp.RequestHandler) fasthttp.RequestHandler {
+	return fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) {
+		self.slogger.W( log.LLEV_DBG, "Middleware ..." )
+		next(ctx); return
+	})
 }

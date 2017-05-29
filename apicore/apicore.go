@@ -13,7 +13,10 @@ var (
 	err_nil = errors.New("nil")
 	err_glob_InvalidSelf = errors.New("Invalid self struct in configure method! Is self initialized?")
 	err_glob_InvalidContext = errors.New("Invalid input context in configure method!")
-	err_Init_InvalidInputData = errors.New("Some data from module input is corrupted!")
+	err_glob_InvalidInputData = errors.New("Some input data is corrupted!")
+	err_ReqStore_StoreAlreadyDefined = errors.New("Request Store has been already defined! You must free it before!")
+	err_ReqStore_StoreIsUndefined = errors.New("Request Store is undefined!")
+	err_ReqStore_ReqPutError = errors.New("Could not put request in store!")
 )
 
 var (  // Must be in some "config struct" in module input context! (See InitModule method)
@@ -27,6 +30,7 @@ type ApiHandlers interface {
 	CentrifugoConnection(*fasthttp.RequestCtx)
 }
 type ApiMiddlewares interface {
+	QueryIdentificatorAdd(fasthttp.RequestHandler) fasthttp.RequestHandler
 }
 type ApiCore struct {
 	slogger *dlog.Logger
@@ -50,10 +54,9 @@ func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 		Ch_message: ctx.Value(appctx.CTX_LOG_FILE).(*dlog.FileLogger).Mess_queue,
 		Prefix: dlog.LPFX_MODCORE,
 	}
-	core.slogger.W( dlog.LLEV_DBG, "ApiCore module initialization has been complete!" )
 
 	// Validate input "config" ( In future, this must be as config struct in context; Not as global variable!!! ):
-	if len(module_super_secret) == 0 { return nil,err_Init_InvalidInputData }
+	if len(module_super_secret) == 0 { return nil,err_glob_InvalidInputData }
 
 	// Submodules initialization:
 	if core.signer, e = new(apiSigner).configure(apictx); e != nil { return nil,e }
@@ -63,6 +66,7 @@ func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 	if core.Middlewares, e = new(apiMiddleware).configure(apictx); e != nil { return nil,e }
 	if core.Handlers, e = new(apiHandler).configure(apictx); e != nil { return nil,e } // Must be in end of list
 
+	core.slogger.W( dlog.LLEV_DBG, "ApiCore module initialization has been complete!" )
 	return core,nil
 }
 func (self *ApiCore) DeInitModule() error {
