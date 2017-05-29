@@ -17,9 +17,11 @@ var (
 	err_ReqStore_StoreAlreadyDefined = errors.New("Request Store has been already defined! You must free it before!")
 	err_ReqStore_StoreIsUndefined = errors.New("Request Store is undefined!")
 	err_ReqStore_ReqPutError = errors.New("Could not put request in store!")
+	err_DB_DdAlreadyDefined = errors.New("sql.DB ahs been already defined!")
+	err_DB_InvalidDb = errors.New("Invalid DB pointer in method!")
 )
 
-var (  // Must be in some "config struct" in module input context! (See InitModule method)
+var (  // Must be in some "config struct" in module input context! (See InitModule method); (in main.go):
 	module_super_secret = []byte("OKu2a1LXpmRoKrZS")
 )
 
@@ -37,11 +39,15 @@ type ApiCore struct {
 	users *users.Users
 	signer *apiSigner
 	jsoner *apiJsoner
+	database *apiDatabase
 
 	Handlers ApiHandlers
 	Middlewares ApiMiddlewares
 
-	sign_secret []byte
+	// Must be in config struct
+	sign_secret string
+	sql_host, sql_port string
+	sql_username, sql_password, sql_database string
 }
 func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 	var e error
@@ -55,12 +61,25 @@ func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 		Prefix: dlog.LPFX_MODCORE,
 	}
 
+	// !!! Must be in config struct: (in main.go)
+	core.sign_secret = string(module_super_secret)
+	core.sql_host = "127.0.0.1"
+	core.sql_port = "23306"
+	core.sql_username = "golucky"
+	core.sql_password = "wR3Lzp27jCh0KAMV"
+	core.sql_database = "doshelpv2"
+
 	// Validate input "config" ( In future, this must be as config struct in context; Not as global variable!!! ):
 	if len(module_super_secret) == 0 { return nil,err_glob_InvalidInputData }
+	if len(core.sign_secret) == 0 { return nil,err_glob_InvalidInputData }
+	if len(core.sql_host) == 0 || len(core.sql_port) == 0 { return nil,err_glob_InvalidInputData }
+	if len(core.sql_username) == 0 || len(core.sql_password) == 0 { return nil,err_glob_InvalidInputData }
+	if len(core.sql_database) == 0 { return nil,err_glob_InvalidInputData }
 
 	// Submodules initialization:
 	if core.signer, e = new(apiSigner).configure(apictx); e != nil { return nil,e }
 	if core.jsoner, e = new(apiJsoner).configure(apictx); e != nil { return nil,e }
+	if core.database, e = new(apiDatabase).configure(apictx); e != nil { return nil,e }
 
 	// Exports initialization:
 	if core.Middlewares, e = new(apiMiddleware).configure(apictx); e != nil { return nil,e }

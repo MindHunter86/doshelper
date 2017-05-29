@@ -18,7 +18,7 @@ func (self *apiSigner) configure(ctx context.Context) ( *apiSigner, error ) {
 	if ctx == nil { return nil,err_glob_InvalidContext }
 
 	self.ApiCore = ctx.Value(appctx.CTX_MOD_APICORE).(*ApiCore)
-	self.secret = self.sign_secret
+	self.secret = []byte(self.sign_secret)
 
 	self.slogger.W( log.LLEV_DBG, "Hmac submodule has been initialized and configured!")
 	return self,nil
