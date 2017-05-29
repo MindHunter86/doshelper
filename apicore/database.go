@@ -1,6 +1,5 @@
 package apicore
 
-import "time"
 import "database/sql"
 
 import "doshelpv2/log"
@@ -35,10 +34,6 @@ func (self *apiDatabase) createConnection() error {
 
 	self.db, e = sql.Open("mysql", self.sql_username + ":" + self.sql_password + "@tcp(" + self.sql_host + ":" + self.sql_port + ")/" + self.sql_database)
 	if e != nil { return e }
-
-	self.slogger.W( log.LLEV_DBG, "self.db has been created!" )
-	self.db.SetConnMaxLifetime( 3 * time.Second )
-
 
 	return self.db.Ping()
 }

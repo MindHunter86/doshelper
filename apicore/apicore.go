@@ -40,6 +40,7 @@ type ApiCore struct {
 	signer *apiSigner
 	jsoner *apiJsoner
 	database *apiDatabase
+	// add request store && don;t forget to destroy memory store in DeInit function! 
 
 	Handlers ApiHandlers
 	Middlewares ApiMiddlewares
@@ -89,7 +90,11 @@ func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 	return core,nil
 }
 func (self *ApiCore) DeInitModule() error {
-	self.slogger.W( dlog.LLEV_OK, "YEAH! Module Exit!" )
+	var errs string
+	if e := self.database.destroyConnection(); e != nil { errs += e.Error() + " " }
+
+	if len(errs) != 0 { return errors.New("Some problems with de-initialization ApiCore module: " + errs) }
+	self.slogger.W( dlog.LLEV_OK, "ApiCore module has been successfully destroyed!" )
 	return nil
 }
 func (self *ApiCore) GetUsers() ( *users.Users ) {
