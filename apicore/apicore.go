@@ -47,7 +47,7 @@ type ApiCore struct {
 
 	// Must be in config struct
 	sign_secret string
-	sql_host, sql_port string
+	sql_addr string
 	sql_username, sql_password, sql_database string
 }
 func InitModule( ctx context.Context ) ( *ApiCore, error ) {
@@ -64,8 +64,7 @@ func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 
 	// !!! Must be in config struct: (in main.go)
 	core.sign_secret = string(module_super_secret)
-	core.sql_host = "127.0.0.1"
-	core.sql_port = "23306"
+	core.sql_addr = "127.0.0.1:23306"
 	core.sql_username = "golucky"
 	core.sql_password = "wR3Lzp27jCh0KAMV"
 	core.sql_database = "doshelpv2"
@@ -73,7 +72,7 @@ func InitModule( ctx context.Context ) ( *ApiCore, error ) {
 	// Validate input "config" ( In future, this must be as config struct in context; Not as global variable!!! ):
 	if len(module_super_secret) == 0 { return nil,err_glob_InvalidInputData }
 	if len(core.sign_secret) == 0 { return nil,err_glob_InvalidInputData }
-	if len(core.sql_host) == 0 || len(core.sql_port) == 0 { return nil,err_glob_InvalidInputData }
+	if len(core.sql_addr) == 0 { return nil,err_glob_InvalidInputData }
 	if len(core.sql_username) == 0 || len(core.sql_password) == 0 { return nil,err_glob_InvalidInputData }
 	if len(core.sql_database) == 0 { return nil,err_glob_InvalidInputData }
 
