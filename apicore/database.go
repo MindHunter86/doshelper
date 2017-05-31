@@ -22,9 +22,7 @@ func (self *apiDatabase) configure(ctx context.Context) ( *apiDatabase, error ) 
 
 	self.ApiCore = ctx.Value(appctx.CTX_MOD_APICORE).(*ApiCore)
 
-	if self.db == nil {
-		e := self.createConnection(); if e != nil { return nil,e }
-	}
+	if e := self.createConnection(); e != nil { return nil,e }
 
 	self.slogger.W( log.LLEV_DBG, "Database submodule has been initialized and configured!" )
 	return self,nil
@@ -33,10 +31,7 @@ func (self *apiDatabase) createConnection() error {
 	if self.db != nil { return err_DB_DdAlreadyDefined }
 
 	var e error
-
-	// self.db, e = sql.Open("mysql", self.sql_username + ":" + self.sql_password + "@tcp(" + self.sql_host + ":" + self.sql_port + ")/" + self.sql_database)
-	self.db, e = sql.Open( "mysql", self.configureConnetcion().FormatDSN() )
-	if e != nil { return e }
+	if self.db, e = sql.Open( "mysql", self.configureConnetcion().FormatDSN() ); e != nil { return e }
 
 	return self.db.Ping()
 }
@@ -47,7 +42,6 @@ func (self *apiDatabase) destroyConnection() error {
 	return self.db.Close()
 }
 func (self *apiDatabase) configureConnetcion() *mysql.Config {
-
 	var cnf *mysql.Config = new(mysql.Config)
 
 	// https://github.com/go-sql-driver/mysql - docs
@@ -81,3 +75,13 @@ func (self *apiDatabase) configureConnetcion() *mysql.Config {
 
 	return cnf
 }
+
+func (self *apiDatabase) getRequestByID(id uint64) ( *request, error ) {
+	if self == nil { return nil,err_glob_InvalidSelf }
+
+	return nil,nil
+//	stmt, e := self.db.Prepare("select")
+}
+func (self *apiDatabase) getLastRequest() {}
+func (self *apiDatabase) getRequestsCount() {}
+func (self *apiDatabase) removeRequestByID(id uint64) {}

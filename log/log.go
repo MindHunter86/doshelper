@@ -12,6 +12,7 @@ const (
 	LPFX_MODRPC
 	LPFX_MODAPI
 	LPFX_MODCORE
+	LPFX_MODSHIELD
 )
 const (
 	LLEV_DBG = iota
@@ -51,6 +52,8 @@ func ( l *Logger ) GetPrefix( colo bool ) string {
 		if colo { return "\x1b[36;1m[MODAPI]:\x1b[0m" } else { return "[MODAPI]: " }
 	case LPFX_MODCORE:
 		if colo { return "\x1b[36;1m[MODCORE]:\x1b[0m" } else { return "[MODCORE]: " }
+	case LPFX_MODSHIELD:
+		if colo { return "\x1b[36;1m[MODSHIELD]:\x1b[0m" } else { return "[MODSHIELD]: " }
 	default:
 		return ""
 	}

@@ -7,8 +7,9 @@ import "net/http/pprof"
 import "log"
 import "doshelpv2/appctx"
 import dlog "doshelpv2/log"
-import "doshelpv2/apimodule"
 import "doshelpv2/apicore"
+import "doshelpv2/apimodule"
+import "doshelpv2/apishield"
 
 import "github.com/gorilla/mux"
 import "golang.org/x/net/context"
@@ -19,14 +20,20 @@ import "golang.org/x/net/context"
 var application *app
 type app struct {
 	sync.WaitGroup
+
+	// modules:
 	clients *activeClients
 	socket *sockListener
 	rpc *rpcService
 	api *apimodule.ApiModule
 	core *apicore.ApiCore
+	shield apishield.ApiShieldModule
+
+	// loggers:
 	flogger *dlog.FileLogger
 	slogger *dlog.Logger
 }
+
 
 func newApp() {
 	var e error
@@ -46,6 +53,7 @@ func newApp() {
 	if application.socket, e = newSockListener( appNetProto, appNetPath ); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.rpc, e = _rpcService(); e != nil { log.Fatalln("Application INIT problem:", e); return }
 	if application.core, e = apicore.InitModule(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
+	if application.shield, e = new(apishield.ApiShield).Configure(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
 
 	ctx = context.WithValue( ctx, appctx.CTX_MOD_APICORE, application.core )
 	if application.api, e = apimodule.InitModule(ctx); e != nil { log.Fatalln("Application INIT problem:", e); return }
