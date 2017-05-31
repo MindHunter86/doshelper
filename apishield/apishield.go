@@ -13,6 +13,9 @@ var (
 	err_mod_InvalidSelf = errors.New("Invalid self struct in configure method! Is self initialized?")
 	err_mod_InvalidContext = errors.New("Invalid input context in configure method!")
 	err_mod_InvalidInputData = errors.New("Some input data is corrupted!")
+	err_gstore_StoreAlreadyDefined = errors.New("Guest Store has been already defined!")
+	err_gstore_InvalidStore = errors.New("Could not destroy Guest Store, because it's undefined!")
+	err_gstore_RecordNotFound = errors.New("Could not get requested record. Record not found!")
 )
 
 
