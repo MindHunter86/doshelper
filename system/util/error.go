@@ -8,4 +8,6 @@ var (
 
 	Err_Main_ErroredExit = errors.New("Could not close application correctly!")
 	Err_Main_ModuleError = errors.New("Could not start application module normaly!")
+
+	Err_Controller_Api_InvalidRouter = errors.New("Self Router is not defined! Did you initialize submodule correctly?")
 )
