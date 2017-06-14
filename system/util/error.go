@@ -7,4 +7,5 @@ var (
 	Err_Glob_InvalidContext = errors.New("Detected undefined inout context in called method!")
 
 	Err_Main_ErroredExit = errors.New("Could not close application correctly!")
+	Err_Main_ModuleError = errors.New("Could not start application module normaly!")
 )
