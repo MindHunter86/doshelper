@@ -4,8 +4,6 @@ import "golucky/system/util"
 import "golucky/controller/api"
 import "golucky/controller/middleware"
 
-
-
 import "golang.org/x/net/context"
 import "github.com/sirupsen/logrus"
 
