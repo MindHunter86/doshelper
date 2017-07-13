@@ -25,6 +25,9 @@ type AppConfig struct {
 	LogColorized bool
 	LogTimestamps bool
 	LogFormat string
+
+	// service submodule settings:
+	ServiceMaxErrors uint8
 }
 // Merge default configuration with input configuration:
 func (self *AppConfig) Configure(inpConfig *AppConfig) (*AppConfig, error) {

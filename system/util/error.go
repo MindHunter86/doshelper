@@ -15,4 +15,5 @@ var (
 	Err_Controller_InvalidMiddle = errors.New("Self Middlewares have been already defined!")
 	Err_Controller_ImportedMiddles = errors.New("Self Middles has been already defined!")
 	Err_Controller_NotImpMiddles = errors.New("Self Middles are not defined! Did you import it?")
+
 )
