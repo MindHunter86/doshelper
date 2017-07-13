@@ -31,7 +31,7 @@ func init() {
 
 	// config initialization:
 	var inpConfig *util.AppConfig = new(util.AppConfig)
-	flag.StringVar(&app.Config.P2PInfoHash, "p2p_hash", "", "P2P info hash for autodescovery.")
+	flag.StringVar(&inpConfig.P2PInfoHash, "p2p_hash", "", "P2P info hash for autodescovery.")
 	// ...
 	// ...
 	// etc.

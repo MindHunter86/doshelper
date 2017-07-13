@@ -49,7 +49,7 @@ func (self *AppConfig) Configure(inpConfig *AppConfig) (*AppConfig, error) {
 	s1fnum := mrgS1.NumField()
 	for i := 0 ; i < s1fnum; i++ {
 		// fldS2 - field of second struct (input struct)
-		if fldS2 := mrgS2.Field(i); fldS2.IsNil() { mrgS1.Field(i).Set(reflect.ValueOf(fldS2)) }
+		if fldS2 := mrgS2.Field(i); fldS2.IsValid() { mrgS1.Field(i).Set(reflect.Value(fldS2)) }
 	}
 
 	return self,nil

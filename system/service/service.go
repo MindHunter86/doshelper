@@ -3,6 +3,7 @@ package service
 import "sync/atomic"
 
 import "golucky/system/util"
+import "golucky/system/service/p2p"
 
 import "golang.org/x/net/context"
 import "github.com/sirupsen/logrus"
@@ -60,6 +61,7 @@ func (self *ServiceSubmodule) Configure(ctx context.Context) (*ServiceSubmodule,
 	//   }
 	//   if e != nil { log.Println("SHIT!", e) }
 	for { // "module error catcher":
+		if e = self.PreloadService(new(p2p.P2PService).Configure(ctx)); e != nil { break }
 		break
 	}
 	if e != nil { self.log.WithField("error", e).Errorln(util.Err_Service_ConfigureError) }
