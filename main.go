@@ -52,6 +52,7 @@ func main() {
 
 	// create context for next modules initialization
 	ctx = context.WithValue(context.Background(), util.CTX_MAIN_LOGGER, app.Logout)
+	ctx = context.WithValue(ctx, util.CTX_MAIN_CONFIG, app.Config)
 
 	// application main module initialization:
 	for {	// "module error catcher":
