@@ -24,14 +24,11 @@ func (self *P2PService) Configure(ctx context.Context) (uint8, util.Service, err
 	self.dht_infohash = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PInfoHash
 	self.dht_listenport = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PDhtLstnPort
 
-	self.log.Debugln("Service " + self.service_name + " input config:")
-	self.log.Debugln(self.dht_infohash)
-	self.log.Debugln(self.dht_listenport)
-
 	self.log.Debugln("Service " + self.service_name + " has been successfully configured! Service ready to run.")
 	return self.service_id,self,nil
 }
 func (self *P2PService) Destroy() error {
+	// ADD active flag ??
 	return nil
 }
 func (self *P2PService) Start() error {

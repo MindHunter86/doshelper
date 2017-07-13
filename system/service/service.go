@@ -17,7 +17,7 @@ const (
 )
 
 type BaseService struct {
-	util.Service
+	service util.Service
 	status uint32
 }
 func (self *BaseService) Status() uint32 {
@@ -25,9 +25,6 @@ func (self *BaseService) Status() uint32 {
 }
 func (self *BaseService) SetStatus(status uint32) {
 	atomic.StoreUint32(&self.status, status)
-}
-func (self *BaseService) Stop() {
-	self.SetStatus(StatusStopping)
 }
 func (self *BaseService) IsNeedStop() bool {
 	return self.Status() == StatusStopping
@@ -68,9 +65,28 @@ func (self *ServiceSubmodule) Configure(ctx context.Context) (*ServiceSubmodule,
 
 	return self,nil
 }
+func (self *ServiceSubmodule) Run() {
+	for id, bService := range self.services {
+		switch bService.Status() {
+		case StatusReady:
+			e := bService.service.Start(); if e == nil { continue }
+			self.log.WithField("service error", e).Warnln("Service " + util.SERVICE_PTR[id] + " run error!")
+			bService.SetStatus(StatusFailed)
+		case StatusFailed:
+			self.log.Warnln("Service " + util.SERVICE_PTR[id] + " has FAILURE status. You must reset it, before starting again!")
+		case StatusStopping:
+			self.log.Warnln("Service " + util.SERVICE_PTR[id] + " has not stopped yet. You can not run it now!")
+		case StatusRunning:
+			self.log.Infoln("Service " + util.SERVICE_PTR[id] + " is running now!")
+		}
+	}
+}
+func (self *ServiceSubmodule) Destroy() error {
+	return nil
+}
 func (self *ServiceSubmodule) PreloadService(service_ident uint8, service_ptr util.Service, service_error error) error {
 	self.services[service_ident] = &BaseService{
-		Service: service_ptr,
+		service: service_ptr,
 		status: StatusReady,
 	}
 	if service_error != nil {
