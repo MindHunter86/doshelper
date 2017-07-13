@@ -33,14 +33,13 @@ func init() {
 	app.Logout.Infoln("Application has been initialized! Starting subsystems...")
 }
 func main() {
-	var e error
+	var e error = nil // if War will happen =)
 	var ctx context.Context
 
 	// create context for next modules initialization
 	ctx = context.WithValue(context.Background(), util.CTX_MAIN_LOGGER, app.Logout)
 
 	// application main module initialization:
-	e = nil	// if War will happen
 	for {	// "module error catcher":
 		if app.PTR_controller, e = new(controller.ControllerModule).Configure(ctx); e != nil { break }
 		if app.PTR_system, e = new(system.SystemModule).Configure(ctx); e != nil { break }

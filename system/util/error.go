@@ -9,6 +9,8 @@ var (
 	Err_Main_ErroredExit = errors.New("Could not close application correctly!")
 	Err_Main_ModuleError = errors.New("Could not start application module normaly!")
 
+	Err_Service_ConfigureError = errors.New("Could not configure service!")
+
 	Err_Controller_InvalidRouter = errors.New("Self Router has been already defined!")
 	Err_Controller_InvalidMiddle = errors.New("Self Middlewares have been already defined!")
 	Err_Controller_ImportedMiddles = errors.New("Self Middles has been already defined!")
