@@ -1,5 +1,6 @@
 package main
 
+import  "flag"
 import "os"
 import "os/signal"
 import "syscall"
@@ -26,6 +27,19 @@ func init() {
 		ForceColors: true,
 		FullTimestamp: true,
 		TimestampFormat: "Mon, 02 Jan 2006 15:04:05 -0700",
+	}
+
+	// config initialization:
+	var inpConfig *util.AppConfig = new(util.AppConfig)
+	flag.StringVar(&app.Config.P2PInfoHash, "p2p_hash", "", "P2P info hash for autodescovery.")
+	// ...
+	// ...
+	// etc.
+
+	var e error
+	if app.Config, e = new(util.AppConfig).Configure(inpConfig); e != nil {
+		app.Logout.WithField("error", e).Println("Could not parse configuration!")
+		os.Exit(1)
 	}
 
 	// info messages:
