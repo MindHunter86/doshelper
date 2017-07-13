@@ -10,6 +10,9 @@ type P2PService struct {
 	log *logrus.Logger
 	service_id uint8
 	service_name string
+
+	dht_infohash string
+	dht_listenport uint16
 }
 func (self *P2PService) Configure(ctx context.Context) (uint8, util.Service, error) {
 	if self == nil { return util.SERVICE_PTR_P2P,nil,util.Err_Glob_InvalidSelf }
@@ -18,6 +21,12 @@ func (self *P2PService) Configure(ctx context.Context) (uint8, util.Service, err
 	self.log = ctx.Value(util.CTX_MAIN_LOGGER).(*logrus.Logger)
 	self.service_id = util.SERVICE_PTR_P2P
 	self.service_name = util.SERVICE_PTR[self.service_id]
+	self.dht_infohash = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PInfoHash
+	self.dht_listenport = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PDhtLstnPort
+
+	self.log.Debugln("Service " + self.service_name + " input config:")
+	self.log.Debugln(self.dht_infohash)
+	self.log.Debugln(self.dht_listenport)
 
 	self.log.Debugln("Service " + self.service_name + " has been successfully configured! Service ready to run.")
 	return self.service_id,self,nil

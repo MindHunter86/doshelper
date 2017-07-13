@@ -35,9 +35,10 @@ func init() {
 	// ...
 	// ...
 	// etc.
+	flag.Parse()
 
 	var e error
-	if app.Config, e = new(util.AppConfig).Configure(inpConfig); e != nil {
+	if app.Config, e = new(util.AppConfig).Configure(inpConfig); e != nil || !flag.Parsed() {
 		app.Logout.WithField("error", e).Println("Could not parse configuration!")
 		os.Exit(1)
 	}
