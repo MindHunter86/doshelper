@@ -32,8 +32,6 @@ func (self *P2PService) Destroy() error {
 	return nil
 }
 func (self *P2PService) Start() error {
-
-	for {}
 	return nil
 }
 func (self *P2PService) Stop() error {

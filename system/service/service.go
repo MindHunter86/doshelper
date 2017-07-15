@@ -35,11 +35,10 @@ func (self *BaseService) IsNeedStop() bool {
 
 type ServiceSubmodule struct {
 	log *logrus.Logger
+	wgroup sync.WaitGroup
 	services map[uint8]*BaseService
 
 	cnf_maxErrors uint8
-
-	sync.WaitGroup
 }
 func (self *ServiceSubmodule) Configure(ctx context.Context) (*ServiceSubmodule, error) {
 	if self == nil { return nil,util.Err_Glob_InvalidSelf }
@@ -73,7 +72,7 @@ func (self *ServiceSubmodule) Configure(ctx context.Context) (*ServiceSubmodule,
 	return self,nil
 }
 // run all services conigured in self.services:
-func (self *ServiceSubmodule) Run() error {
+func (self *ServiceSubmodule) Run(done <-chan struct{}) error {
 	for id, bService := range self.services {
 		switch bService.Status() {
 		case StatusReady:
@@ -87,20 +86,29 @@ func (self *ServiceSubmodule) Run() error {
 			self.log.Infoln("Service " + util.SERVICE_PTR[id] + " is running now!")
 		}
 	}
+
+	// wating signal for main.go for closing all running services:
+	self.log.Infoln("WAIT...")
+	<-done
+	self.log.Warnln("DEBUG! Cached MainGO signal")
 	return nil
 }
 func (self *ServiceSubmodule) bootstrap(id uint8) {
-	self.Add(1)
+	self.wgroup.Add(1)
 
-	for i:=uint8(0); i < self.cnf_maxErrors; i ++ {
+	for i := uint8(0); i < self.cnf_maxErrors; i++ {
 		// bootstrap initialization:
 		self.services[id].error_ch = make(chan error)
 		self.services[id].SetStatus(StatusRunning)
 
 		// service bootstrap:
 		go func(self *ServiceSubmodule, id uint8) {
+			self.wgroup.Add(1)
+
 			if e := self.services[id].service.Start(); e != nil { self.services[id].error_ch <-e }
 			close(self.services[id].error_ch)
+
+			self.wgroup.Done()
 		}(self, id)
 
 		// catch error or close() method:
@@ -116,7 +124,7 @@ func (self *ServiceSubmodule) bootstrap(id uint8) {
 		break
 	}
 
-	self.Done()
+	self.wgroup.Done()
 }
 // stop service with "id":
 func (self *ServiceSubmodule) Stop(id uint32) error {

@@ -1,12 +1,13 @@
 package util
 
+import "sync"
 import "reflect"
 import "github.com/sirupsen/logrus"
 
 type Application struct {
 	Logout *logrus.Logger
-
 	Config *AppConfig
+	WGroup sync.WaitGroup
 
 	PTR_system System
 	PTR_controller Controller
@@ -45,6 +46,8 @@ func (self *AppConfig) Configure(inpConfig *AppConfig) (*AppConfig, error) {
 	self.LogTimestamps = true
 	self.LogFormat = "Mon, 02 Jan 2006 15:04:05 -0700"
 
+	self.ServiceMaxErrors = uint8(3)
+
 	// merge config structs (mrgS# - merge struct #):
 	mrgS1 := reflect.ValueOf(self).Elem()
 	mrgS2 := reflect.ValueOf(inpConfig).Elem()
@@ -57,6 +60,7 @@ func (self *AppConfig) Configure(inpConfig *AppConfig) (*AppConfig, error) {
 
 	return self,nil
 }
+
 func (self *AppConfig) isEmptyValue(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
@@ -76,6 +80,7 @@ func (self *AppConfig) isEmptyValue(v reflect.Value) bool {
 }
 
 type System interface {
+	Run(<-chan struct{}) error
 	Destroy() error
 }
 type Controller interface {

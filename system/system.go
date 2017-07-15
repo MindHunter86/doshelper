@@ -24,6 +24,9 @@ func (self *SystemModule) Configure(ctx context.Context) (*SystemModule, error) 
 	self.logout.Debugln("System Module has been successfully initialized and configured!")
 	return self,nil
 }
+func (self *SystemModule) Run(done <-chan struct{}) error {
+	return self.ptr_sub_service.Run(done)
+}
 func (self *SystemModule) Destroy() error {
 	self.logout.Debugln("System Module has been successfully destroyed!")
 	return nil

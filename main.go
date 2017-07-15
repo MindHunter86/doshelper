@@ -48,11 +48,14 @@ func init() {
 	app.Logout.Infoln("Application has been initialized! Starting subsystems...")
 }
 func main() {
-	var e error = nil // if War will happen =)
+	var e error
 	var ctx context.Context
+	var ctxClose context.CancelFunc
 
 	// create context for next modules initialization
-	ctx = context.WithValue(context.Background(), util.CTX_MAIN_LOGGER, app.Logout)
+	ctx, ctxClose = context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, util.CTX_MAIN_LOGGER, app.Logout)
+	ctx = context.WithValue(ctx, util.CTX_MAIN_WGROUP, app.WGroup)
 	ctx = context.WithValue(ctx, util.CTX_MAIN_CONFIG, app.Config)
 
 	// application main module initialization:
@@ -64,18 +67,38 @@ func main() {
 	}
 	if e != nil { app.Logout.WithField("error", e).Errorln(util.Err_Main_ModuleError) }
 
-	var sgn = make(chan os.Signal)
-	signal.Notify(sgn, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
+	var sgnExit chan<- os.Signal = make(chan os.Signal)
+	var sgnReload chan<- os.Signal = make(chan os.Signal)
+	signal.Notify(sgnExit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
+	signal.Notify(sgnReload, syscall.SIGHUP)
 	app.Logout.Debugln("Kernel signal catcher has been initialized!")
 
 	// some subsystem startings ...
-	// TODO
+	// ...
+	// etc.
+	var stop_cn <-chan struct{} = ctx.Done() // stop channel
+	go app.PTR_system.Run(stop_ch)
+
+
+	for {
+		select {
+		case <-sgnExit:
+			// stop services;
+			// destroy (sub)-modules
+		case <-sgnReload:
+			// reload configuration;
+			// stop services;
+			// start services;
+		}
+	}
 
 	// application kernel signal catcher:
 	<-sgn
 	app.Logout.Warnln("Catched QUIT signal from kernel! Stopping all systems...")
+	ctxClose() // close main context for stopping all modules, submodules, services and etc.
+	app.WGroup.Wait() // wait for modules stop
 
-	// close and destroy all subsystems:
+	// destroy all subsystems:
 	e = nil // if War will happen
 	for {	// "module error catcher":
 		if e = app.PTR_model.Destroy(); e != nil { break }
