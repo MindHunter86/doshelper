@@ -1,18 +1,6 @@
 package util
 
-import "sync"
 import "reflect"
-import "github.com/sirupsen/logrus"
-
-type Application struct {
-	Logout *logrus.Logger
-	Config *AppConfig
-	WGroup sync.WaitGroup
-
-	PTR_system System
-	PTR_controller Controller
-	PTR_model Model
-}
 
 type AppConfig struct {
 	// p2p settings:
@@ -28,6 +16,7 @@ type AppConfig struct {
 	LogFormat string
 
 	// service submodule settings:
+	ModuleMaxErrors uint8
 	ServiceMaxErrors uint8
 }
 // Merge default configuration with input configuration:
@@ -46,6 +35,7 @@ func (self *AppConfig) Configure(inpConfig *AppConfig) (*AppConfig, error) {
 	self.LogTimestamps = true
 	self.LogFormat = "Mon, 02 Jan 2006 15:04:05 -0700"
 
+	self.ModuleMaxErrors = uint8(3)
 	self.ServiceMaxErrors = uint8(3)
 
 	// merge config structs (mrgS# - merge struct #):
@@ -60,7 +50,6 @@ func (self *AppConfig) Configure(inpConfig *AppConfig) (*AppConfig, error) {
 
 	return self,nil
 }
-
 func (self *AppConfig) isEmptyValue(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
@@ -77,15 +66,4 @@ func (self *AppConfig) isEmptyValue(v reflect.Value) bool {
 		return v.IsNil()
 	}
 	return false
-}
-
-type System interface {
-	Run(<-chan struct{}) error
-	Destroy() error
-}
-type Controller interface {
-	Destroy() error
-}
-type Model interface {
-	Destroy() error
 }

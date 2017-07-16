@@ -8,28 +8,29 @@ import "github.com/sirupsen/logrus"
 
 
 type SystemModule struct {
-	logout *logrus.Logger
+	logger *logrus.Logger
+	done_pipe <-chan struct{}
 
 	ptr_sub_service *service.ServiceSubmodule
 }
-func (self *SystemModule) Configure(ctx context.Context) (*SystemModule, error) {
+func (self *SystemModule) Configure(ctx context.Context) (util.AppModule, error) {
 	if self == nil { return nil,util.Err_Glob_InvalidSelf }
 	if ctx == nil { return nil,util.Err_Glob_InvalidContext }
 
-	var e error
+	self.done_pipe = ctx.Done()
+	self.logger = ctx.Value(util.CTX_MAIN_LOGGER).(*logrus.Logger)
 
-	self.logout = ctx.Value(util.CTX_MAIN_LOGGER).(*logrus.Logger)
+	var e error
 	if self.ptr_sub_service, e = new(service.ServiceSubmodule).Configure(ctx); e != nil { return nil,e }
 
-	self.logout.Debugln("System Module has been successfully initialized and configured!")
+	self.logger.Debugln("System Module has been successfully initialized and configured!")
 	return self,nil
 }
-func (self *SystemModule) Run(done <-chan struct{}) error {
-	return self.ptr_sub_service.Run(done)
+func (self *SystemModule) Load() error {
+	return self.ptr_sub_service.Run()
 }
-func (self *SystemModule) Destroy() error {
-	self.logout.Debugln("System Module has been successfully destroyed!")
-	return nil
+func (self *SystemModule) Unload() {
+	self.logger.Debugln("System Module has been successfully unloaded!")
 }
 
 

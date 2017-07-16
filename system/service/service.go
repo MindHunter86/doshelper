@@ -34,63 +34,77 @@ func (self *BaseService) IsNeedStop() bool {
 
 
 type ServiceSubmodule struct {
-	log *logrus.Logger
+	logger *logrus.Logger
 	wgroup sync.WaitGroup
 	services map[uint8]*BaseService
 
 	cnf_maxErrors uint8
+	done_pipe <-chan struct{}
 }
 func (self *ServiceSubmodule) Configure(ctx context.Context) (*ServiceSubmodule, error) {
 	if self == nil { return nil,util.Err_Glob_InvalidSelf }
 	if ctx == nil { return nil,util.Err_Glob_InvalidContext }
 
-	self.log = ctx.Value(util.CTX_MAIN_LOGGER).(*logrus.Logger)
+	self.done_pipe = ctx.Done()
+	self.logger = ctx.Value(util.CTX_MAIN_LOGGER).(*logrus.Logger)
 	self.cnf_maxErrors = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).ServiceMaxErrors
-	self.log.Debugln("Service submodule has been successfully initialized and configured!")
 
 	var e error
 	self.services = make(map[uint8]*BaseService)
 
 	// Service pre-load list:
-	// Ex1:
-	//   self.PreloadService(new(p2p.P2PService).Configure(ctx))
-	// Ex2:
-	//   for {
-	//     if e = self.PreloadService(new(p2p.P2PService).Configure(ctx)); e != nil { break }
-	//     if e = self.PreloadService(new(p2p.P3PService).Configure(ctx)); e != nil { break }
-	//     if e = self.PreloadService(new(p2p.P4PService).Configure(ctx)); e != nil { break }
-	//     if e = self.PreloadService(new(p2p.P5PService).Configure(ctx)); e != nil { break }
-	//     break
-	//   }
-	//   if e != nil { log.Println("SHIT!", e) }
 	for { // "module error catcher":
 		if e = self.PreloadService(new(p2p.P2PService).Configure(ctx)); e != nil { break }
 		break
 	}
-	if e != nil { self.log.WithField("error", e).Errorln(util.Err_Service_ConfigureError) }
+	if e != nil { self.logger.WithField("error", e).Errorln(util.Err_Service_ConfigureError) }
 
+	self.logger.Debugln("Service submodule has been successfully initialized and configured!")
 	return self,nil
 }
 // run all services conigured in self.services:
-func (self *ServiceSubmodule) Run(done <-chan struct{}) error {
+func (self *ServiceSubmodule) Run() error {
 	for id, bService := range self.services {
 		switch bService.Status() {
 		case StatusReady:
 			go self.bootstrap(id)
-			self.log.Debugln("Service " + util.SERVICE_PTR[id] + " has been successfully bootstraped!")
+			self.logger.Debugln("Service " + util.SERVICE_PTR[id] + " has been successfully bootstraped!")
 		case StatusFailed:
-			self.log.Warnln("Service " + util.SERVICE_PTR[id] + " has FAILURE status. You must reset it, before starting again!")
+			self.logger.Warnln("Service " + util.SERVICE_PTR[id] + " has FAILURE status. You must reset it, before starting again!")
 		case StatusStopping:
-			self.log.Warnln("Service " + util.SERVICE_PTR[id] + " has not stopped yet. You can not run it now!")
+			self.logger.Warnln("Service " + util.SERVICE_PTR[id] + " has not stopped yet. You can not run it now!")
 		case StatusRunning:
-			self.log.Infoln("Service " + util.SERVICE_PTR[id] + " is running now!")
+			self.logger.Infoln("Service " + util.SERVICE_PTR[id] + " is running now!")
 		}
 	}
 
 	// wating signal for main.go for closing all running services:
-	self.log.Infoln("WAIT...")
-	<-done
-	self.log.Warnln("DEBUG! Cached MainGO signal")
+	self.logger.Infoln("WAIT...")
+	<-self.done_pipe
+	self.logger.Warnln("DEBUG! Cached MainGO signal")
+	return nil
+}
+// stop service with "id":
+func (self *ServiceSubmodule) Stop(id uint32) error {
+	return nil
+}
+// stop all services; destroy submodule:
+func (self *ServiceSubmodule) Destroy() error {
+	self.logger.Debugln("Waiting for services closing...")
+	self.wgroup.Wait()
+
+	self.logger.Infoln("All services has been stopped!")
+	return nil
+}
+func (self *ServiceSubmodule) PreloadService(service_ident uint8, service_ptr util.Service, service_error error) error {
+	self.services[service_ident] = &BaseService{
+		service: service_ptr,
+		status: StatusReady,
+	}
+	if service_error != nil {
+		self.services[service_ident].SetStatus(StatusFailed)
+		return service_error
+	}
 	return nil
 }
 func (self *ServiceSubmodule) bootstrap(id uint8) {
@@ -115,7 +129,7 @@ func (self *ServiceSubmodule) bootstrap(id uint8) {
 		e := <-self.services[id].error_ch
 		if e != nil {
 			self.services[id].SetStatus(StatusFailed)
-			self.log.WithField("error", e).Warnln("Service " + util.SERVICE_PTR[id] + " has been unexpectedly closed!")
+			self.logger.WithField("error", e).Warnln("Service " + util.SERVICE_PTR[id] + " has been unexpectedly closed!")
 			continue
 		}
 
@@ -125,27 +139,4 @@ func (self *ServiceSubmodule) bootstrap(id uint8) {
 	}
 
 	self.wgroup.Done()
-}
-// stop service with "id":
-func (self *ServiceSubmodule) Stop(id uint32) error {
-	return nil
-}
-// stop all services; destroy submodule:
-func (self *ServiceSubmodule) Destroy() error {
-	self.log.Debugln("Waiting for services closing...")
-	self.Wait()
-
-	self.log.Infoln("All services has been stopped!")
-	return nil
-}
-func (self *ServiceSubmodule) PreloadService(service_ident uint8, service_ptr util.Service, service_error error) error {
-	self.services[service_ident] = &BaseService{
-		service: service_ptr,
-		status: StatusReady,
-	}
-	if service_error != nil {
-		self.services[service_ident].SetStatus(StatusFailed)
-		return service_error
-	}
-	return nil
 }
