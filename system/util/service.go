@@ -25,5 +25,5 @@ type Service interface {
 	Stop() error
 
 	// Destroy service. If service status is "ServiceRunning", it wiil be stopped before.
-	Destroy() error
+	Destroy()
 }

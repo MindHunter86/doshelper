@@ -85,8 +85,13 @@ func (self *ServiceSubmodule) Run() error {
 	return nil
 }
 // stop service with "id":
-func (self *ServiceSubmodule) Stop(id uint32) error {
-	return nil
+func (self *ServiceSubmodule) stop() {
+	var services_count uint8 = uint8(len(self.services))
+	for id := uint8(0); id < services_count; id++ {
+		if e := self.services[id].service.Stop(); e != nil {
+			self.logger.WithField("service error", e).Warnln("Service " + util.SERVICE_PTR[id] + " has been closed with errors!")
+		}
+	}
 }
 // stop all services; destroy submodule:
 func (self *ServiceSubmodule) Destroy() error {

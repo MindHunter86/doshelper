@@ -27,14 +27,15 @@ func (self *P2PService) Configure(ctx context.Context) (uint8, util.Service, err
 	self.log.Debugln("Service " + self.service_name + " has been successfully configured! Service ready to run.")
 	return self.service_id,self,nil
 }
-func (self *P2PService) Destroy() error {
+func (self *P2PService) Destroy() {
+	self.log.Debugln("Service " + self.service_name + " has been successfully unloaded!")
 	// ADD active flag ??
-	return nil
 }
 func (self *P2PService) Start() error {
 	return nil
 }
 func (self *P2PService) Stop() error {
+	self.log.Debugln("Service " + self.service_name + " has been successfully stopped!")
 	return nil
 }
 //
