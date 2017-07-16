@@ -18,9 +18,7 @@ func (self *ModelModule) Configure(ctx context.Context) (util.AppModule, error) 
 
 	return self,nil
 }
-func (self *ModelModule) Load() error {
-	return nil
-}
+func (self *ModelModule) Load() error { return nil }
 func (self *ModelModule) Unload() {
 	self.logger.Debugln("Model Module has been successfully unloaded!")
 }

@@ -14,7 +14,7 @@ type ControllerModule struct {
 	ptr_sub_api *api.ApiSubmodule
 	ptr_sub_middle *middleware.MiddlewareSubmodule
 }
-func (self *ControllerModule) Configure(ctx context.Context) (*ControllerModule, error) {
+func (self *ControllerModule) Configure(ctx context.Context) (util.AppModule, error) {
 	if self == nil { return nil,util.Err_Glob_InvalidSelf }
 	if ctx == nil { return nil,util.Err_Glob_InvalidContext }
 
@@ -33,7 +33,7 @@ func (self *ControllerModule) Configure(ctx context.Context) (*ControllerModule,
 	self.logout.Debugln("Controller Module has been successfully initialized and configured!")
 	return self,nil
 }
-func (self *ControllerModule) Destroy() error {
-	self.logout.Debugln("Controller Module has been successfully destroyed!")
-	return nil
+func (self *ControllerModule) Load() error { return nil }
+func (self *ControllerModule) Unload() {
+	self.logout.Debugln("Controller Module has been successfully unloaded!")
 }

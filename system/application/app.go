@@ -1,13 +1,14 @@
 package application
 
+//import "time"
+import "sync"
 import "syscall"
 import "os"
 import "os/signal"
-import "sync"
 
 import "golucky/model"
 import "golucky/system"
-//import "golucky/controller"
+import "golucky/controller"
 import "golucky/system/util"
 
 import "golang.org/x/net/context"
@@ -32,7 +33,7 @@ type Application struct {
 
 	ctx_close context.CancelFunc
 
-	module_err chan struct{}
+	moderr_pipe chan map[uint8]error
 }
 func (self *Application) Initialize(cnf *util.AppConfig) *Application {
 	// TODO: Added some cnf variable checks
@@ -48,7 +49,7 @@ func (self *Application) Initialize(cnf *util.AppConfig) *Application {
 	}
 
 	self.modules = make(map[uint8]*baseModule)
-	self.module_err = make(chan struct{})
+	self.moderr_pipe = make(chan map[uint8]error, 1)
 
 	return self
 }
@@ -61,10 +62,11 @@ func (self *Application) ConfigureAndLaunch() error {
 	ctx = context.WithValue(ctx, util.CTX_MAIN_WGROUP, self.wGroup)
 	ctx = context.WithValue(ctx, util.CTX_MAIN_CONFIG, self.config)
 
-	for { // WARNING! Save order! See module const ids!
+	for { // XXX: WARNING! Save order! See module const ids!
 		// Ex: if e = self.PreloadService(new(p2p.P2PService).Configure(ctx)); e != nil { break }
-		if e = self.preloadModule(new(model.ModelModule).Configure(ctx)); e != nil { break }
+		if e = self.preloadModule(new(controller.ControllerModule).Configure(ctx)); e != nil { break }
 		if e = self.preloadModule(new(system.SystemModule).Configure(ctx)); e != nil { break }
+		if e = self.preloadModule(new(model.ModelModule).Configure(ctx)); e != nil { break }
 		break
 	}
 	if e != nil { self.logger.WithField("module error", e).Errorln(util.Err_App_ModuleError) }
@@ -89,11 +91,17 @@ func (self *Application) launch() {
 		self.logger.Infoln("Module " + util.AppModules[i] + " has been bootstraped!")
 	}
 
+	//
+
 DSTR:
 	for {
 		select {
-			// TODO: REFACTOR!!!
-		case <-self.module_err:
+			// TODO: refactor this select
+		case inp := <-self.moderr_pipe:
+			for id,e := range inp {
+				self.logger.WithField("module error", e).Errorln("Module " + util.AppModules[id] + " has been unexpectedly exited!")
+			}
+			self.logger.Errorln("Fatal error! Some module has been crashed! Started modules unload!")
 			self.ctx_close()
 			break DSTR
 		case <-self.sgnl_exit:
@@ -104,6 +112,8 @@ DSTR:
 			// reload configuration;
 			// stop services;
 			// start services;
+//		default:
+//			time.Sleep( 100 *time.Millisecond )
 		}
 	}
 
@@ -125,7 +135,9 @@ func (self *Application) preloadModule(mPtr util.AppModule, mError error) error 
 	return nil
 }
 func (self *Application) bootstrapModule(id uint8) {
-	if _,ok := (<-self.module_err); !ok { return }
+	self.logger.Debugln(1)
+	if len(self.moderr_pipe) != 0 { return }
+	self.logger.Debugln(2)
 	self.wGroup.Add(1)
 
 	go func(self *Application, id uint8) {
@@ -139,10 +151,7 @@ func (self *Application) bootstrapModule(id uint8) {
 
 	// catch error or close() event:
 	e := <-self.modules[id].error_ch
-	if e != nil {
-		self.logger.WithField("module error", e).Errorln("Module " + util.AppModules[id] + " has been unexpectedly exited!")
-		close(self.module_err)
-	}
+	if e != nil { self.moderr_pipe<- map[uint8]error{id: e} }
 
 	self.wGroup.Done()
 }
