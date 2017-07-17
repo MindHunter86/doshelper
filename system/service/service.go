@@ -79,9 +79,9 @@ func (self *ServiceSubmodule) Run() error {
 	}
 
 	// wating signal for main.go for closing all running services:
-	self.logger.Infoln("WAIT...")
 	<-self.done_pipe
-	self.logger.Warnln("DEBUG! Cached MainGO signal")
+	self.stop()
+	self.logger.Info("All services have been successfully stopped and unloaded!")
 	return nil
 }
 // stop service with "id":
@@ -95,10 +95,6 @@ func (self *ServiceSubmodule) stop() {
 }
 // stop all services; destroy submodule:
 func (self *ServiceSubmodule) Destroy() error {
-	self.logger.Debugln("Waiting for services closing...")
-	self.wgroup.Wait()
-
-	self.logger.Infoln("All services has been stopped!")
 	return nil
 }
 func (self *ServiceSubmodule) PreloadService(service_ident uint8, service_ptr util.Service, service_error error) error {

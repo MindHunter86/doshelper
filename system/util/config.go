@@ -5,10 +5,16 @@ import "reflect"
 type AppConfig struct {
 	// p2p settings:
 	P2PInfoHash string
-	P2PDhtLstnPort uint16
-	P2PDhtRouters string
+	P2PListenPort uint16
+	P2PRouters string
 	P2PDebug bool
 	P2PDebugPort uint16
+	P2PMaxNodes int
+	P2PNumTargetPeers int
+	P2PRateLimit int64
+	P2PMaxInfoHashes int
+	P2PMaxInfoHashPeers int
+	P2PClientPerMinuteLimit int
 
 	// log settings:
 	LogColorized bool
@@ -26,10 +32,16 @@ func (self *AppConfig) Configure(inpConfig *AppConfig) (*AppConfig, error) {
 
 	// default values:
 	self.P2PInfoHash = "deca7a89a1dbdc4b213de1c0d5351e92582f31fb"
-	self.P2PDhtRouters = "router.utorrent.com:6881,router.magnets.im:6881,router.bittorrent.com:6881,dht.transmissionbt.com:6881,dht.aelitis.com:6881,router.bitcomet.com:6881"
-	self.P2PDhtLstnPort = uint16(9000)
+	self.P2PRouters = "router.utorrent.com:6881,router.magnets.im:6881,router.bittorrent.com:6881,dht.transmissionbt.com:6881,dht.aelitis.com:6881,router.bitcomet.com:6881"
+	self.P2PListenPort = uint16(9000)
 	self.P2PDebug = true
 	self.P2PDebugPort = uint16(9001)
+	self.P2PMaxNodes = 500
+	self.P2PNumTargetPeers = 5
+	self.P2PRateLimit = 100
+	self.P2PMaxInfoHashes = 2048
+	self.P2PMaxInfoHashPeers = 256
+	self.P2PClientPerMinuteLimit = 50
 
 	self.LogColorized = true
 	self.LogTimestamps = true

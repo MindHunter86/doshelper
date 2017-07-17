@@ -30,5 +30,6 @@ func (self *SystemModule) Load() error {
 	return self.ptr_sub_service.Run()
 }
 func (self *SystemModule) Unload() {
+	self.ptr_sub_service.Destroy()
 	self.logger.Debugln("System Module has been successfully unloaded!")
 }

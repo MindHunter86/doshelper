@@ -69,7 +69,7 @@ func (self *Application) ConfigureAndLaunch() error {
 		if e = self.preloadModule(new(model.ModelModule).Configure(ctx)); e != nil { break }
 		break
 	}
-	if e != nil { self.logger.WithField("module error", e).Errorln(util.Err_App_ModuleError) }
+	if e != nil { return e }
 
 	self.sgnl_exit = make(chan os.Signal)
 	self.sgnl_reload = make(chan os.Signal)
@@ -87,11 +87,10 @@ func (self *Application) GetLogger() *logrus.Logger {
 func (self *Application) launch() {
 	var modules_count uint8 = uint8(len(self.modules))
 	for i := uint8(0); i < modules_count; i++ {
+		if len(self.moderr_pipe) != 0 { break }
 		go self.bootstrapModule(i)
 		self.logger.Infoln("Module " + util.AppModules[i] + " has been bootstraped!")
 	}
-
-	//
 
 DSTR:
 	for {
@@ -112,7 +111,7 @@ DSTR:
 			// reload configuration;
 			// stop services;
 			// start services;
-//		default:
+//		default: XXX: GOOGLE SELECT OPTIMIZATIONS
 //			time.Sleep( 100 *time.Millisecond )
 		}
 	}
@@ -135,9 +134,6 @@ func (self *Application) preloadModule(mPtr util.AppModule, mError error) error 
 	return nil
 }
 func (self *Application) bootstrapModule(id uint8) {
-	self.logger.Debugln(1)
-	if len(self.moderr_pipe) != 0 { return }
-	self.logger.Debugln(2)
 	self.wGroup.Add(1)
 
 	go func(self *Application, id uint8) {

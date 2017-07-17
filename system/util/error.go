@@ -11,6 +11,10 @@ var (
 
 	Err_Service_ConfigureError = errors.New("Could not configure service!")
 
+	Err_Service_P2P_AlreadyStarted = errors.New("DHT Instance has been already started!")
+	Err_Service_P2P_FailureState = errors.New("DHT Instance in 'failure' state! You must reconfigure it before.")
+	Err_Service_P2P_NilInstance = errors.New("DHT Instance is nil! Did you configure service before calling Start function?")
+
 	Err_Controller_InvalidRouter = errors.New("Self Router has been already defined!")
 	Err_Controller_InvalidMiddle = errors.New("Self Middlewares have been already defined!")
 	Err_Controller_ImportedMiddles = errors.New("Self Middles has been already defined!")

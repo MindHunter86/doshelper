@@ -2,17 +2,25 @@ package p2p
 
 import "golucky/system/util"
 
-//import "github.com/nictuku/dht"
+import "github.com/nictuku/dht"
 import "golang.org/x/net/context"
 import "github.com/sirupsen/logrus"
+
+const (
+	p2pStatusReady = uint8(iota)
+	p2pStatusPeering
+	p2pStatusSeraching // discovery
+	p2pStatusFailure
+)
 
 type P2PService struct {
 	log *logrus.Logger
 	service_id uint8
 	service_name string
 
-	dht_infohash string
-	dht_listenport uint16
+	dhtInstnace *dht.DHT
+	dhtInstnaceHash dht.InfoHash
+	dhtInstnaceStatus uint8
 }
 func (self *P2PService) Configure(ctx context.Context) (uint8, util.Service, error) {
 	if self == nil { return util.SERVICE_PTR_P2P,nil,util.Err_Glob_InvalidSelf }
@@ -21,9 +29,24 @@ func (self *P2PService) Configure(ctx context.Context) (uint8, util.Service, err
 	self.log = ctx.Value(util.CTX_MAIN_LOGGER).(*logrus.Logger)
 	self.service_id = util.SERVICE_PTR_P2P
 	self.service_name = util.SERVICE_PTR[self.service_id]
-	self.dht_infohash = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PInfoHash
-	self.dht_listenport = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PDhtLstnPort
 
+	var e error
+	var dhtInfoHash string
+	var dhtConfig *dht.Config = dht.NewConfig()
+	dhtInfoHash = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PInfoHash
+	dhtConfig.Port = int(ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PListenPort)
+	dhtConfig.DHTRouters = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PRouters
+	dhtConfig.MaxNodes = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PMaxNodes
+	dhtConfig.NumTargetPeers = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PNumTargetPeers
+	dhtConfig.RateLimit = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PRateLimit
+	dhtConfig.MaxInfoHashes = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PMaxInfoHashes
+	dhtConfig.MaxInfoHashPeers = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PMaxInfoHashPeers
+	dhtConfig.ClientPerMinuteLimit = ctx.Value(util.CTX_MAIN_CONFIG).(*util.AppConfig).P2PClientPerMinuteLimit
+
+	if self.dhtInstnaceHash, e = dht.DecodeInfoHash(dhtInfoHash); e != nil { return self.service_id,nil,e }
+	if self.dhtInstnace, e = dht.New(dhtConfig); e != nil { return self.service_id,nil,e }
+
+	self.dhtInstnaceStatus = p2pStatusReady
 	self.log.Debugln("Service " + self.service_name + " has been successfully configured! Service ready to run.")
 	return self.service_id,self,nil
 }
@@ -32,27 +55,41 @@ func (self *P2PService) Destroy() {
 	// ADD active flag ??
 }
 func (self *P2PService) Start() error {
+	if self == nil { return util.Err_Glob_InvalidSelf }
+	if self.dhtInstnace == nil { return util.Err_Service_P2P_NilInstance  }
+	switch self.dhtInstnaceStatus {
+		case p2pStatusPeering, p2pStatusSeraching:
+			return util.Err_Service_P2P_AlreadyStarted
+		case p2pStatusFailure:
+			return util.Err_Service_P2P_FailureState
+	}
+
+	if e := self.dhtInstnace.Start(); e != nil { self.dhtInstnaceStatus = p2pStatusFailure; return e; }
+	self.log.Debugln("Service " + self.service_name + " has been successfully started!")
 	return nil
 }
 func (self *P2PService) Stop() error {
 	self.log.Debugln("Service " + self.service_name + " has been successfully stopped!")
 	return nil
 }
-//
-//
-//
-//package main
-//
-//import "net/http"
-//
-//
-//import "golucky/system/util"
-//
-//import "github.com/nictuku/dht"
-//import "golang.org/x/net/context"
-//import "github.com/sirupsen/logrus"
-//
-//
+func (self *P2PService) peering() error {
+	return nil
+}
+
+
+type dhtNeighbors struct {
+	dhtInstnace *dht.DHT
+}
+func (self *dhtNeighbors) findAndMaintain() error {
+	if self == nil { return util.Err_Glob_InvalidSelf }
+	if self.dhtInstnace == nil { return util.Err_Service_P2P_NilInstance  }
+
+	// TODO
+	return nil
+}
+
+
+
 //func main() {
 //
 //	// example from https://github.com/meshbird/meshbird/blob/41a032c55c07b4b609cfa84d8ea365d4c58a8d59/common/discovery_dht.go:
@@ -113,19 +150,6 @@ func (self *P2PService) Stop() error {
 //		}
 //	}
 //}
-//
-//
-///*
-//
-//	router.utorrent.com:6881
-//	router.magnets.im:6881
-//	router.bittorrent.com:6881
-//	dht.transmissionbt.com:6881
-//	router.bitcomet.com:6881
-//	dht.aelitis.com:6881
-//
 //2017/07/08 21:52:41 167.114.232.119:9000
 //2017/07/08 21:52:41 ERR: DecodeInfoHash: expected InfoHash len=20, got 0
 //2017/07/08 21:52:41 DEBUG: k- deca7a89a1dbdc4b213de1c0d5351e92582f31fb ; k2- 0
-//
-//*/
